@@ -22,3 +22,9 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# Render provides 'postgres://', but asyncpg requires 'postgresql+asyncpg://'
+if settings.DATABASE_URL and settings.DATABASE_URL.startswith("postgres://"):
+    settings.DATABASE_URL = settings.DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
+elif settings.DATABASE_URL and settings.DATABASE_URL.startswith("postgresql://"):
+    settings.DATABASE_URL = settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
