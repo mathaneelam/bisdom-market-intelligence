@@ -38,7 +38,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=["*"], # Allow Vercel frontend to connect
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -50,6 +50,10 @@ app.include_router(competitors.router)
 app.include_router(trade_shows.router)
 app.include_router(trigger.router)
 
+@app.get("/", tags=["health"])
+@app.head("/", tags=["health"])
+async def root():
+    return {"status": "ok", "service": "bisdom-intelligence", "message": "API is running"}
 
 @app.get("/health", tags=["health"])
 async def health():
