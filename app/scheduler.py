@@ -1,0 +1,124 @@
+import logging
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
+logger = logging.getLogger(__name__)
+
+scheduler = AsyncIOScheduler(timezone="Asia/Kolkata")
+
+from datetime import datetime
+from sqlalchemy import select
+from app.models import base as models_base
+from app.models.brief import Brief
+from app.delivery.telegram import TelegramSender
+
+
+# ─── Collectors ───────────────────────────────────────────────────────────────
+
+async def run_rss_collector():
+    from app.collectors.rss_feeds import RSSCollector
+    logger.info("Scheduler: Running RSS Collector...")
+    collector = RSSCollector()
+    await collector.run()
+
+async def run_reddit_collector():
+    from app.collectors.reddit import RedditCollector
+    logger.info("Scheduler: Running Reddit Collector...")
+    collector = RedditCollector()
+    await collector.run()
+
+
+# ─── Processors ───────────────────────────────────────────────────────────────
+
+async def run_ai_scorer():
+    from app.processors.scorer import Scorer
+    logger.info("Scheduler: Running AI Scorer...")
+    scorer = Scorer()
+    count = await scorer.process_batch(batch_size=50)
+    logger.info("Scheduler: AI Scorer processed %d signals.", count)
+    return count
+
+async def run_brief_builder():
+    from app.processors.brief_builder import BriefBuilder
+    logger.info("Scheduler: Running Brief Builder...")
+    builder = BriefBuilder()
+    await builder.run()
+
+
+# ─── Delivery ─────────────────────────────────────────────────────────────────
+
+async def run_telegram_delivery(force: bool = False):
+    """Send today's brief to Telegram. Set force=True to resend even if already delivered."""
+    logger.info("Scheduler: Running Telegram Delivery...")
+    today = datetime.utcnow().date()
+    async with models_base.AsyncSessionLocal() as session:
+        stmt = select(Brief).where(Brief.brief_date == today)
+        brief = (await session.execute(stmt)).scalars().first()
+        if not brief:
+            logger.warning("Scheduler: No brief found for today — skipping Telegram delivery.")
+            return False
+        if brief.delivered_tg and not force:
+            logger.info("Scheduler: Brief already delivered via Telegram today.")
+            return False
+        sender = TelegramSender()
+        success = await sender.send_brief(brief)
+        if success:
+            brief.delivered_tg = True
+            await session.commit()
+            logger.info("Scheduler: Telegram delivery complete.")
+        return success
+
+
+# ─── Job registration ──────────────────────────────────────────────────────────
+
+def setup_jobs():
+    """Register all scheduled jobs."""
+
+    # Every 6 hours — RSS feeds (TechCrunch, Fibre2Fashion, etc.)
+    scheduler.add_job(
+        run_rss_collector,
+        "interval",
+        hours=6,
+        id="rss_collector",
+        replace_existing=True,
+    )
+
+    # Every 4 hours — Reddit (pain pulse + opportunity keywords)
+    scheduler.add_job(
+        run_reddit_collector,
+        "interval",
+        hours=4,
+        id="reddit_collector",
+        replace_existing=True,
+    )
+
+    # Daily 5:00 AM IST — AI scoring of raw signals
+    scheduler.add_job(
+        run_ai_scorer,
+        "cron",
+        hour=5,
+        minute=0,
+        id="ai_processing",
+        replace_existing=True,
+    )
+
+    # Daily 5:30 AM IST — Build intelligence brief
+    scheduler.add_job(
+        run_brief_builder,
+        "cron",
+        hour=5,
+        minute=30,
+        id="brief_builder",
+        replace_existing=True,
+    )
+
+    # Daily 6:00 AM IST — Send brief via Telegram
+    scheduler.add_job(
+        run_telegram_delivery,
+        "cron",
+        hour=6,
+        minute=0,
+        id="delivery_telegram",
+        replace_existing=True,
+    )
+
+    logger.info("Scheduler: %d jobs registered.", len(scheduler.get_jobs()))

@@ -1,0 +1,10 @@
+Bisdom Intelligence — Alembic Migrations
+
+Run migrations:
+  alembic upgrade head
+
+Create a new migration after model changes:
+  alembic revision --autogenerate -m "describe your change"
+
+Downgrade one step:
+  alembic downgrade -1
