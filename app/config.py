@@ -32,3 +32,7 @@ elif settings.DATABASE_URL and settings.DATABASE_URL.startswith("postgresql://")
 # Remove unsupported parameters like sslmode=require that crash asyncpg
 if "?" in settings.DATABASE_URL:
     settings.DATABASE_URL = settings.DATABASE_URL.split("?")[0]
+
+# Enforce strict SSL for Neon databases using the format asyncpg expects
+if "neon.tech" in settings.DATABASE_URL:
+    settings.DATABASE_URL += "?ssl=require"
