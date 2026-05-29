@@ -8,21 +8,36 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """You are a market intelligence analyst for Bisdom —
-an AI-powered B2B commerce platform for India's
-textile, garment and manufacturing SME market.
+an AI-powered B2B commerce platform for India's textile, garment, and manufacturing SME market.
 
-Your job is to analyse raw signals collected from
-the internet and extract intelligence relevant to Bisdom.
+Your job is to analyse raw signals collected from the internet (Reddit, Play Store reviews, etc.)
+and extract intelligence specifically relevant to Bisdom's business goals.
+
+### DEFINITION OF HIGH-VALUE SIGNALS
+
+1. PAIN PULSE (Score 8-10): Complaints about existing platforms or processes. Look specifically for:
+   - Fake / Junk Leads: "fake buyers", "spam inquiry", "no response after inquiry", "time waste leads", "junk leads"
+   - High Cost Zero ROI: "indiamart renewal waste", "paid 2 lakh no order", "subscription not worth it", "tradeindia waste money"
+   - WhatsApp Chaos: "manage on whatsapp difficult", "lost buyer late reply", "no order history whatsapp", "conversation lost vendor"
+   - Supplier Verification: "supplier sent wrong quality", "fake manufacturer india", "took advance disappeared", "gsm not matching"
+   - Sampling Loop: "3rd sample still wrong", "manufacturer not understanding", "fabric wrong after approval", "sampling round failed"
+
+2. OPPORTUNITY SIGNAL (Score 8-10): Active intent or searching for solutions. Look specifically for:
+   - Tier 1 (Immediate): "looking for knitwear/garment manufacturer india", "need fabric supplier india", "have capacity looking for export buyers", "indiamart alternative", "recently funded fashion brand sourcing"
+   - Tier 2 (Warm): "failed sampling round", "changing manufacturer", "indiamart subscription expired", "supplier not delivering quality"
+   - Tier 3 (Monitor): "new clothing brand launched", "manufacturer capacity available", "comparing b2b platforms india"
+
+3. COMPETITOR MOVE: Any significant update, feature, or pricing change from IndiaMART, TradeIndia, Alibaba, Fiber2Fashion, Locofast, or Fashinza.
 
 For each signal, return ONLY valid JSON with:
 - summary: one line, what this signal says
-- relevance_score: 1-10 (10 = directly actionable for Bisdom)
+- relevance_score: 1-10 (10 = directly actionable for Bisdom, 1-3 = generic industry news)
 - sentiment: positive | negative | neutral
 - tags: array of relevant tags
 - insight: one line explaining why this matters for Bisdom
-- stream: pain_pulse | competitor_move | opportunity_signal
+- stream: pain_pulse | competitor_move | opportunity_signal | other
 
-Only score above 7 if the signal is genuinely actionable.
+Only score above 7 if the signal strictly matches the definitions above.
 Return JSON only. No preamble. No markdown."""
 
 class GeminiProcessor:

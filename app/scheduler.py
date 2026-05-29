@@ -26,6 +26,12 @@ async def run_reddit_collector():
     collector = RedditCollector()
     await collector.run()
 
+async def run_playstore_collector():
+    from app.collectors.play_store import PlayStoreCollector
+    logger.info("Scheduler: Running Play Store Collector...")
+    collector = PlayStoreCollector()
+    await collector.run()
+
 
 # ─── Processors ───────────────────────────────────────────────────────────────
 
@@ -88,6 +94,15 @@ def setup_jobs():
         "interval",
         hours=4,
         id="reddit_collector",
+        replace_existing=True,
+    )
+
+    # Every 12 hours — Play Store reviews (competitor pain points)
+    scheduler.add_job(
+        run_playstore_collector,
+        "interval",
+        hours=12,
+        id="playstore_collector",
         replace_existing=True,
     )
 

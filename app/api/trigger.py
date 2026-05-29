@@ -27,11 +27,12 @@ router = APIRouter(prefix="/trigger", tags=["trigger"])
 
 @router.post("/collect")
 async def trigger_collect():
-    """Run RSS + Reddit collectors now and save new signals to the database."""
-    from app.scheduler import run_rss_collector, run_reddit_collector
+    """Run RSS + Reddit + Play Store collectors now and save new signals to the database."""
+    from app.scheduler import run_rss_collector, run_reddit_collector, run_playstore_collector
     logger.info("Manual trigger: collect")
     await run_rss_collector()
     await run_reddit_collector()
+    await run_playstore_collector()
     return {"status": "ok", "message": "Collectors finished. Check /signals for new data."}
 
 
@@ -115,13 +116,14 @@ async def trigger_all():
     Note: this can take 1-2 minutes because of API calls.
     """
     from app.scheduler import (
-        run_rss_collector, run_reddit_collector,
+        run_rss_collector, run_reddit_collector, run_playstore_collector,
         run_ai_scorer, run_brief_builder, run_telegram_delivery,
     )
     logger.info("Manual trigger: full pipeline")
 
     await run_rss_collector()
     await run_reddit_collector()
+    await run_playstore_collector()
     await run_ai_scorer()
     await run_brief_builder()
     await run_telegram_delivery(force=True)
