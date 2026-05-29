@@ -28,3 +28,7 @@ if settings.DATABASE_URL and settings.DATABASE_URL.startswith("postgres://"):
     settings.DATABASE_URL = settings.DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
 elif settings.DATABASE_URL and settings.DATABASE_URL.startswith("postgresql://"):
     settings.DATABASE_URL = settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+# Remove unsupported parameters like sslmode=require that crash asyncpg
+if "?" in settings.DATABASE_URL:
+    settings.DATABASE_URL = settings.DATABASE_URL.split("?")[0]
