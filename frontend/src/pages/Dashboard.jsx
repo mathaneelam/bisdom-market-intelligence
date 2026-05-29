@@ -2,90 +2,145 @@ import { useEffect, useState } from "react";
 import { api } from "../lib/api";
 import { AlertCircle, TrendingUp, Zap, BarChart2, ArrowUpRight, Clock } from "lucide-react";
 
-function StatCard({ icon: Icon, label, value, gradient, iconBg, delay }) {
+/* ── Stat card ───────────────────────────────────────────── */
+function StatCard({ icon: Icon, label, value, accentColor, delay }) {
   return (
     <div
-      className={`glass-card p-6 animate-fade-in animate-fade-in-delay-${delay}`}
-      style={{ overflow: 'hidden', position: 'relative' }}
+      className={`glass-card animate-fade-in-delay-${delay}`}
+      style={{ padding: "26px 28px", overflow: "hidden", position: "relative" }}
     >
-      {/* Decorative gradient blob */}
-      <div style={{
-        position: 'absolute',
-        top: '-20px',
-        right: '-20px',
-        width: '80px',
-        height: '80px',
-        background: gradient,
-        borderRadius: '50%',
-        opacity: 0.15,
-        filter: 'blur(20px)',
-      }} />
-      <div className="flex items-center gap-3 mb-4 relative">
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{
-          background: iconBg,
-          boxShadow: `0 4px 12px ${iconBg}33`,
+      {/* Icon + label */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18, position: "relative" }}>
+        <div style={{
+          width: 38, height: 38, borderRadius: 10, flexShrink: 0,
+          background: `${accentColor}18`,
+          border: `1px solid ${accentColor}30`,
+          display: "flex", alignItems: "center", justifyContent: "center",
         }}>
-          <Icon size={18} className="text-white" />
+          <Icon size={16} style={{ color: accentColor }} />
         </div>
-        <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#94a3b8' }}>{label}</p>
+        <p className="section-label" style={{ margin: 0 }}>{label}</p>
       </div>
-      <p className="text-4xl font-extrabold relative" style={{ color: '#1e293b', letterSpacing: '-0.02em' }}>
-        {value ?? <span className="shimmer inline-block w-12 h-8"></span>}
+
+      {/* Number */}
+      <p style={{
+        fontFamily: "'Montserrat Alternates', sans-serif",
+        fontSize: 32,
+        fontWeight: 800,
+        letterSpacing: "-1.5px",
+        color: "var(--text)",
+        margin: 0,
+        position: "relative",
+      }}>
+        {value ?? <span className="shimmer" style={{ display: "inline-block", width: 60, height: 36, verticalAlign: "middle" }} />}
       </p>
     </div>
   );
 }
 
-function BriefSection({ title, emoji, items, accentColor, borderColor }) {
-  if (!items || items.length === 0)
-    return (
-      <div className="glass-card p-6">
-        <h3 className="text-sm font-bold mb-3" style={{ color: '#64748b' }}>{emoji} {title}</h3>
-        <p className="text-sm italic" style={{ color: '#cbd5e1' }}>No signals above threshold yet.</p>
-      </div>
-    );
+/* ── Brief section card ──────────────────────────────────── */
+function BriefSection({ title, dotColor, items, accentColor }) {
+  const empty = !items || items.length === 0;
   return (
-    <div className="glass-card p-6">
-      <h3 className="text-sm font-bold mb-4" style={{ color: '#334155' }}>{emoji} {title}</h3>
-      <ul className="space-y-3">
-        {items.map((s, i) => (
-          <li
-            key={i}
-            className="p-4 rounded-xl transition-all duration-200"
-            style={{
-              background: 'rgba(255, 255, 255, 0.6)',
-              borderLeft: `3px solid ${borderColor}`,
-              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.03)',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateX(4px)';
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.06)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateX(0)';
-              e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.03)';
-            }}
-          >
-            <div className="flex items-start justify-between gap-3 mb-2">
-              <p className="text-sm font-semibold leading-snug" style={{ color: '#1e293b' }}>{s.summary}</p>
-              <span className="text-xs font-bold px-2.5 py-1 rounded-lg shrink-0" style={{
-                background: `${accentColor}15`,
-                color: accentColor,
-              }}>
-                {s.relevance_score}/10
-              </span>
-            </div>
-            <p className="text-xs leading-relaxed" style={{ color: '#64748b' }}>{s.insight}</p>
-          </li>
-        ))}
-      </ul>
+    <div className="glass-card" style={{ padding: "24px 26px" }}>
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 18 }}>
+        <span style={{
+          width: 8, height: 8, borderRadius: "50%",
+          background: dotColor, display: "inline-block", flexShrink: 0,
+        }} />
+        <h3 style={{
+          fontSize: 13,
+          fontWeight: 700,
+          color: "var(--text)",
+          margin: 0,
+          letterSpacing: "-.2px",
+        }}>
+          {title}
+        </h3>
+      </div>
+
+      {empty ? (
+        <p style={{ fontSize: 13, fontStyle: "italic", color: "var(--text-dim)", margin: 0 }}>
+          No signals above threshold yet.
+        </p>
+      ) : (
+        <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 10 }}>
+          {items.map((s, i) => (
+            <li
+              key={i}
+              style={{
+                padding: "14px 16px",
+                borderRadius: 12,
+                background: `${accentColor}08`,
+                borderLeft: `2px solid ${accentColor}60`,
+                transition: "transform .2s, background .2s",
+                cursor: "default",
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.transform = "translateX(4px)";
+                e.currentTarget.style.background = `${accentColor}12`;
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.transform = "translateX(0)";
+                e.currentTarget.style.background = `${accentColor}08`;
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, marginBottom: 6 }}>
+                <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", margin: 0, lineHeight: 1.45, letterSpacing: "-.2px" }}>
+                  {s.summary}
+                </p>
+                <span style={{
+                  fontSize: 11, fontWeight: 700,
+                  padding: "3px 8px", borderRadius: 6, flexShrink: 0,
+                  background: `${accentColor}18`,
+                  color: accentColor,
+                }}>
+                  {s.relevance_score}/10
+                </span>
+              </div>
+              <p style={{ fontSize: 12, color: "var(--text-muted)", margin: 0, lineHeight: 1.6 }}>
+                {s.insight}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
 
+/* ── Skeleton loader ─────────────────────────────────────── */
+function DashboardSkeleton() {
+  return (
+    <div>
+      <div className="shimmer" style={{ height: 28, width: 160, marginBottom: 8 }} />
+      <div className="shimmer" style={{ height: 14, width: 220, marginBottom: 36 }} />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16, marginBottom: 36 }}>
+        {[1,2,3,4].map(i => (
+          <div key={i} className="glass-card" style={{ padding: 26 }}>
+            <div className="shimmer" style={{ height: 38, width: 38, borderRadius: 10, marginBottom: 18 }} />
+            <div className="shimmer" style={{ height: 36, width: 80 }} />
+          </div>
+        ))}
+      </div>
+      <div className="shimmer" style={{ height: 18, width: 220, marginBottom: 20 }} />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16 }}>
+        {[1,2,3].map(i => (
+          <div key={i} className="glass-card" style={{ padding: 26 }}>
+            <div className="shimmer" style={{ height: 14, width: 100, marginBottom: 18 }} />
+            <div className="shimmer" style={{ height: 80, width: "100%" }} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── Page ────────────────────────────────────────────────── */
 export default function Dashboard() {
-  const [stats, setStats]   = useState(null);
-  const [brief, setBrief]   = useState(null);
+  const [stats, setStats]     = useState(null);
+  const [brief, setBrief]     = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -95,65 +150,94 @@ export default function Dashboard() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return (
-    <div className="space-y-6">
-      <div className="shimmer h-8 w-48"></div>
-      <div className="grid grid-cols-4 gap-5">
-        {[1,2,3,4].map(i => <div key={i} className="shimmer h-32 rounded-2xl"></div>)}
-      </div>
-      <div className="shimmer h-64 rounded-2xl"></div>
-    </div>
-  );
+  if (loading) return <DashboardSkeleton />;
 
-  const today = new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  const today = new Date().toLocaleDateString("en-IN", {
+    weekday: "long", day: "numeric", month: "long", year: "numeric",
+  });
 
   return (
-    <div>
+    <div className="animate-fade-in">
+
       {/* Header */}
-      <div className="mb-8 animate-fade-in">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-extrabold" style={{ color: '#0f172a', letterSpacing: '-0.02em' }}>Dashboard</h2>
-            <div className="flex items-center gap-2 mt-1.5">
-              <Clock size={13} style={{ color: '#94a3b8' }} />
-              <p className="text-sm font-medium" style={{ color: '#94a3b8' }}>{today}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 px-4 py-2 rounded-full" style={{
-            background: 'rgba(34, 197, 94, 0.08)',
-            border: '1px solid rgba(34, 197, 94, 0.15)',
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 36 }}>
+        <div>
+          <p className="section-label">Overview</p>
+          <h2 style={{
+            fontFamily: "'Montserrat Alternates', sans-serif",
+            fontSize: 28,
+            fontWeight: 800,
+            color: "var(--text)",
+            letterSpacing: "-1.2px",
+            margin: "0 0 8px",
           }}>
-            <div className="w-2 h-2 rounded-full pulse-dot" style={{ background: '#22c55e' }}></div>
-            <span className="text-xs font-semibold" style={{ color: '#16a34a' }}>Live</span>
+            Dashboard
+          </h2>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <Clock size={12} style={{ color: "var(--text-dim)" }} />
+            <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 500 }}>{today}</span>
           </div>
+        </div>
+
+        {/* Live badge */}
+        <div style={{
+          display: "flex", alignItems: "center", gap: 7,
+          padding: "7px 14px", borderRadius: 99,
+          background: "var(--green-tint)",
+          border: "1px solid var(--green-border)",
+        }}>
+          <span className="pulse-dot" style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--green)", display: "inline-block" }} />
+          <span style={{ fontSize: 11, fontWeight: 700, color: "var(--green)", letterSpacing: ".5px", textTransform: "uppercase" }}>Live</span>
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-4 gap-5 mb-8">
-        <StatCard icon={BarChart2}   label="Total Signals"    value={stats?.total}              gradient="#6366f1" iconBg="#6366f1" delay={1} />
-        <StatCard icon={AlertCircle} label="Pain Pulse"       value={stats?.pain_pulse}          gradient="#ef4444" iconBg="#ef4444" delay={2} />
-        <StatCard icon={TrendingUp}  label="Competitor Move"  value={stats?.competitor_move}     gradient="#3b82f6" iconBg="#3b82f6" delay={3} />
-        <StatCard icon={Zap}         label="Opportunity"      value={stats?.opportunity_signal}  gradient="#22c55e" iconBg="#22c55e" delay={4} />
+      {/* Stat cards */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16, marginBottom: 36 }}>
+        <StatCard icon={BarChart2}   label="Total Signals"   value={stats?.total}             accentColor="#1889F6" delay={1} />
+        <StatCard icon={AlertCircle} label="Pain Pulse"      value={stats?.pain_pulse}         accentColor="#EF4444" delay={2} />
+        <StatCard icon={TrendingUp}  label="Competitor Move" value={stats?.competitor_move}    accentColor="#1889F6" delay={3} />
+        <StatCard icon={Zap}         label="Opportunity"     value={stats?.opportunity_signal} accentColor="#22C55E" delay={4} />
       </div>
 
-      {/* Today's Brief */}
-      <div className="animate-fade-in" style={{ animationDelay: '0.3s', opacity: 0 }}>
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-lg font-bold" style={{ color: '#0f172a' }}>Today's Intelligence Brief</h2>
-          {brief?.brief ? (
-            <span className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full" style={{
-              background: 'rgba(34, 197, 94, 0.08)',
-              color: '#16a34a',
-              border: '1px solid rgba(34, 197, 94, 0.15)',
+      <div className="divider" style={{ marginBottom: 36 }} />
+
+      {/* Brief */}
+      <div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+          <div>
+            <p className="section-label">Intelligence</p>
+            <h2 style={{
+              fontFamily: "'Montserrat Alternates', sans-serif",
+              fontSize: 20,
+              fontWeight: 800,
+              color: "var(--text)",
+              letterSpacing: "-.6px",
+              margin: 0,
             }}>
-              <ArrowUpRight size={12} />
+              Today's Brief
+            </h2>
+          </div>
+
+          {brief?.brief ? (
+            <span style={{
+              display: "flex", alignItems: "center", gap: 5,
+              fontSize: 11, fontWeight: 700,
+              padding: "6px 14px", borderRadius: 99,
+              background: "var(--green-tint)",
+              color: "var(--green)",
+              border: "1px solid var(--green-border)",
+              textTransform: "uppercase", letterSpacing: ".5px",
+            }}>
+              <ArrowUpRight size={11} />
               Generated
             </span>
           ) : (
-            <span className="text-xs font-medium px-3 py-1.5 rounded-full" style={{
-              background: '#f1f5f9',
-              color: '#94a3b8',
+            <span style={{
+              fontSize: 11, fontWeight: 600,
+              padding: "6px 14px", borderRadius: 99,
+              background: "var(--blue-tint)",
+              color: "var(--text-dim)",
+              border: "1px solid var(--border-card)",
             }}>
               Not generated yet
             </span>
@@ -161,19 +245,21 @@ export default function Dashboard() {
         </div>
 
         {brief?.brief ? (
-          <div className="grid grid-cols-3 gap-5">
-            <BriefSection title="Pain Pulse"       emoji="🔴" items={brief.brief.pain_pulse}       accentColor="#ef4444" borderColor="#fca5a5" />
-            <BriefSection title="Competitor Move"  emoji="🔵" items={brief.brief.competitor_move}  accentColor="#3b82f6" borderColor="#93c5fd" />
-            <BriefSection title="Opportunity"      emoji="🟢" items={brief.brief.opportunity}      accentColor="#22c55e" borderColor="#86efac" />
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16 }}>
+            <BriefSection title="Pain Pulse"      dotColor="#EF4444" items={brief.brief.pain_pulse}      accentColor="#EF4444" />
+            <BriefSection title="Competitor Move" dotColor="#1889F6" items={brief.brief.competitor_move} accentColor="#1889F6" />
+            <BriefSection title="Opportunity"     dotColor="#22C55E" items={brief.brief.opportunity}     accentColor="#22C55E" />
           </div>
         ) : (
-          <div className="glass-card p-8 text-center">
-            <p className="text-sm italic" style={{ color: '#94a3b8' }}>
-              The brief is generated daily at 5:30 AM IST after AI processing runs. Collect signals and run the processor to generate one.
+          <div className="glass-card" style={{ padding: "48px 32px", textAlign: "center" }}>
+            <p style={{ fontSize: 13, fontStyle: "italic", color: "var(--text-dim)", margin: 0 }}>
+              Brief is generated daily at 5:30 AM IST after AI processing. Collect signals first, then run{" "}
+              <code style={{ color: "var(--blue)", fontFamily: "monospace", fontSize: 12 }}>POST /trigger/brief</code>.
             </p>
           </div>
         )}
       </div>
+
     </div>
   );
 }

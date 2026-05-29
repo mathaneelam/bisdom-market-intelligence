@@ -3,31 +3,30 @@ import { api } from "../lib/api";
 import { Radio } from "lucide-react";
 
 const STREAMS = [
-  { value: "",                   label: "All",             color: "#6366f1" },
-  { value: "pain_pulse",         label: "Pain Pulse",      color: "#ef4444" },
-  { value: "competitor_move",    label: "Competitor Move", color: "#3b82f6" },
-  { value: "opportunity_signal", label: "Opportunity",     color: "#22c55e" },
+  { value: "",                   label: "All",             color: "#1889F6" },
+  { value: "pain_pulse",         label: "Pain Pulse",      color: "#EF4444" },
+  { value: "competitor_move",    label: "Competitor Move", color: "#1889F6" },
+  { value: "opportunity_signal", label: "Opportunity",     color: "#22C55E" },
 ];
 
 const STREAM_META = {
-  pain_pulse:         { label: "Pain Pulse",      color: "#ef4444" },
-  competitor_move:    { label: "Competitor Move", color: "#3b82f6" },
-  opportunity_signal: { label: "Opportunity",     color: "#22c55e" },
+  pain_pulse:         { label: "Pain Pulse",      color: "#EF4444" },
+  competitor_move:    { label: "Competitor Move", color: "#1889F6" },
+  opportunity_signal: { label: "Opportunity",     color: "#22C55E" },
 };
 
 function StreamBadge({ stream }) {
   const meta = STREAM_META[stream];
-  if (!meta) return <span style={{ color: "#94a3b8", fontSize: 11 }}>—</span>;
+  if (!meta) return <span style={{ color: "var(--text-dim)", fontSize: 11 }}>—</span>;
   return (
     <span style={{
-      fontSize: 11,
-      fontWeight: 600,
-      padding: "3px 10px",
-      borderRadius: 99,
-      background: `${meta.color}18`,
+      fontSize: 11, fontWeight: 700,
+      padding: "3px 10px", borderRadius: 99,
+      background: `${meta.color}14`,
       color: meta.color,
-      border: `1px solid ${meta.color}30`,
+      border: `1px solid ${meta.color}28`,
       whiteSpace: "nowrap",
+      letterSpacing: ".3px",
     }}>
       {meta.label}
     </span>
@@ -37,16 +36,13 @@ function StreamBadge({ stream }) {
 function ProcessedDot({ yes }) {
   return (
     <span style={{
-      display: "inline-flex",
-      alignItems: "center",
-      gap: 5,
-      fontSize: 11,
-      fontWeight: 500,
-      color: yes ? "#16a34a" : "#94a3b8",
+      display: "inline-flex", alignItems: "center", gap: 5,
+      fontSize: 11, fontWeight: 600,
+      color: yes ? "var(--green)" : "var(--text-dim)",
     }}>
       <span style={{
         width: 6, height: 6, borderRadius: "50%",
-        background: yes ? "#22c55e" : "#cbd5e1",
+        background: yes ? "var(--green)" : "var(--text-dim)",
         display: "inline-block",
       }} />
       {yes ? "Yes" : "No"}
@@ -64,9 +60,9 @@ function fmt(dt) {
 function SkeletonRow() {
   return (
     <tr>
-      {[100, 80, 280, 90, 110, 50].map((w, i) => (
-        <td key={i} className="px-5 py-4">
-          <div className="shimmer rounded-full" style={{ height: 18, width: w }} />
+      {[90, 100, 280, 90, 110, 50].map((w, i) => (
+        <td key={i} style={{ padding: "14px 20px" }}>
+          <div className="shimmer" style={{ height: 18, width: w, borderRadius: 99 }} />
         </td>
       ))}
     </tr>
@@ -76,10 +72,10 @@ function SkeletonRow() {
 const PAGE_SIZE = 50;
 
 export default function Signals() {
-  const [stream, setStream]     = useState("");
-  const [data, setData]         = useState(null);
-  const [offset, setOffset]     = useState(0);
-  const [loading, setLoading]   = useState(true);
+  const [stream, setStream]   = useState("");
+  const [data, setData]       = useState(null);
+  const [offset, setOffset]   = useState(0);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
@@ -93,31 +89,41 @@ export default function Signals() {
 
   const total = data?.total ?? 0;
   const items = data?.items ?? [];
-  const active = STREAMS.find(s => s.value === stream) ?? STREAMS[0];
 
   return (
     <div className="animate-fade-in">
+
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 32 }}>
         <div>
-          <h2 className="text-2xl font-extrabold" style={{ color: "#0f172a", letterSpacing: "-0.02em" }}>
+          <p className="section-label">Data</p>
+          <h2 style={{
+            fontFamily: "'Montserrat Alternates', sans-serif",
+            fontSize: 28, fontWeight: 800,
+            color: "var(--text)", letterSpacing: "-1.2px",
+            margin: "0 0 6px",
+          }}>
             Signals
           </h2>
-          <p className="text-sm font-medium mt-1" style={{ color: "#94a3b8" }}>
+          <p style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 500, margin: 0 }}>
             Every signal collected from every source
           </p>
         </div>
         {total > 0 && (
-          <div className="px-4 py-2 rounded-full glass-card" style={{ boxShadow: "none" }}>
-            <span className="text-sm font-semibold" style={{ color: "#334155" }}>
+          <div style={{
+            padding: "7px 16px", borderRadius: 99,
+            background: "var(--blue-tint)",
+            border: "1px solid rgba(24,137,246,.18)",
+          }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: "var(--blue)" }}>
               {total.toLocaleString()} signals
             </span>
           </div>
         )}
       </div>
 
-      {/* Stream filter */}
-      <div className="flex gap-2 mb-5">
+      {/* Filter pills */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
         {STREAMS.map(({ value, label, color }) => {
           const isActive = stream === value;
           return (
@@ -125,18 +131,13 @@ export default function Signals() {
               key={value}
               onClick={() => changeStream(value)}
               style={{
-                padding: "7px 18px",
-                borderRadius: 99,
-                fontSize: 13,
-                fontWeight: 600,
-                border: "none",
-                cursor: "pointer",
-                transition: "all 0.2s",
-                background: isActive ? `${color}18` : "rgba(255,255,255,0.7)",
-                color: isActive ? color : "#64748b",
-                boxShadow: isActive
-                  ? `0 0 0 1.5px ${color}40, 0 2px 8px ${color}18`
-                  : "0 1px 3px rgba(0,0,0,0.06)",
+                padding: "7px 18px", borderRadius: 99,
+                fontSize: 12, fontWeight: 600,
+                border: isActive ? `1px solid ${color}35` : "1px solid var(--border-card)",
+                cursor: "pointer", transition: "all .2s",
+                background: isActive ? `${color}14` : "transparent",
+                color: isActive ? color : "var(--text-muted)",
+                letterSpacing: ".2px",
               }}
             >
               {label}
@@ -149,18 +150,17 @@ export default function Signals() {
       <div className="glass-card" style={{ overflow: "hidden", padding: 0 }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
           <thead>
-            <tr style={{ borderBottom: "1px solid rgba(226, 232, 240, 0.8)" }}>
+            <tr style={{ borderBottom: "1px solid var(--border-card)" }}>
               {["Stream", "Source", "Snippet", "Author", "Collected", "Processed"].map(h => (
                 <th key={h} style={{
-                  padding: "12px 20px",
-                  textAlign: "left",
-                  fontSize: 10,
-                  fontWeight: 700,
-                  letterSpacing: "0.1em",
-                  textTransform: "uppercase",
-                  color: "#94a3b8",
-                  background: "rgba(248, 250, 252, 0.6)",
-                }}>{h}</th>
+                  padding: "12px 20px", textAlign: "left",
+                  fontSize: 10, fontWeight: 700,
+                  letterSpacing: "1.5px", textTransform: "uppercase",
+                  color: "var(--text-dim)",
+                  background: "rgba(255,255,255,.02)",
+                }}>
+                  {h}
+                </th>
               ))}
             </tr>
           </thead>
@@ -169,35 +169,38 @@ export default function Signals() {
               Array.from({ length: 8 }).map((_, i) => <SkeletonRow key={i} />)
             ) : items.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ padding: "60px 20px", textAlign: "center" }}>
-                  <Radio size={32} style={{ color: "#e2e8f0", margin: "0 auto 12px" }} />
-                  <p style={{ color: "#94a3b8", fontSize: 14, fontStyle: "italic" }}>
+                <td colSpan={6} style={{ padding: "64px 20px", textAlign: "center" }}>
+                  <Radio size={32} style={{ color: "var(--text-dim)", margin: "0 auto 12px", display: "block" }} />
+                  <p style={{ color: "var(--text-dim)", fontSize: 13, fontStyle: "italic", margin: 0 }}>
                     No signals yet. Run a collector to start pulling data.
                   </p>
                 </td>
               </tr>
-            ) : items.map((s, i) => (
+            ) : items.map(s => (
               <tr
                 key={s.id}
-                style={{ borderBottom: "1px solid rgba(226, 232, 240, 0.5)", transition: "background 0.15s" }}
-                onMouseEnter={e => e.currentTarget.style.background = "rgba(248, 250, 252, 0.7)"}
+                style={{ borderBottom: "1px solid var(--border-card)", transition: "background .15s" }}
+                onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,.025)"}
                 onMouseLeave={e => e.currentTarget.style.background = "transparent"}
               >
                 <td style={{ padding: "13px 20px", whiteSpace: "nowrap" }}>
                   <StreamBadge stream={s.stream} />
                 </td>
-                <td style={{ padding: "13px 20px", color: "#334155", fontWeight: 500, whiteSpace: "nowrap" }}>
+                <td style={{ padding: "13px 20px", color: "var(--text)", fontWeight: 600, whiteSpace: "nowrap", fontSize: 12 }}>
                   {s.source ?? "—"}
                 </td>
-                <td style={{ padding: "13px 20px", color: "#64748b", maxWidth: 300 }}>
-                  <span title={s.snippet} style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <td style={{ padding: "13px 20px", color: "var(--text-muted)", maxWidth: 320 }}>
+                  <span title={s.snippet} style={{
+                    display: "block", overflow: "hidden",
+                    textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12,
+                  }}>
                     {s.snippet || "—"}
                   </span>
                 </td>
-                <td style={{ padding: "13px 20px", color: "#94a3b8", whiteSpace: "nowrap" }}>
+                <td style={{ padding: "13px 20px", color: "var(--text-dim)", whiteSpace: "nowrap", fontSize: 12 }}>
                   {s.author ?? "—"}
                 </td>
-                <td style={{ padding: "13px 20px", color: "#94a3b8", whiteSpace: "nowrap" }}>
+                <td style={{ padding: "13px 20px", color: "var(--text-dim)", whiteSpace: "nowrap", fontSize: 12 }}>
                   {fmt(s.collected_at)}
                 </td>
                 <td style={{ padding: "13px 20px" }}>
@@ -211,20 +214,20 @@ export default function Signals() {
 
       {/* Pagination */}
       {total > PAGE_SIZE && (
-        <div className="flex items-center justify-between mt-5">
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 20 }}>
           <button
             onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
             disabled={offset === 0}
             className="glass-card"
             style={{
-              padding: "8px 20px", fontSize: 13, fontWeight: 600,
-              color: "#334155", border: "none", cursor: "pointer",
-              opacity: offset === 0 ? 0.35 : 1,
+              padding: "9px 22px", fontSize: 12, fontWeight: 700,
+              color: "var(--text-muted)", border: "none", cursor: "pointer",
+              opacity: offset === 0 ? .35 : 1,
             }}
           >
             ← Previous
           </button>
-          <span style={{ fontSize: 13, color: "#94a3b8", fontWeight: 500 }}>
+          <span style={{ fontSize: 12, color: "var(--text-dim)", fontWeight: 600 }}>
             {offset + 1}–{Math.min(offset + PAGE_SIZE, total)} of {total.toLocaleString()}
           </span>
           <button
@@ -232,9 +235,9 @@ export default function Signals() {
             disabled={offset + PAGE_SIZE >= total}
             className="glass-card"
             style={{
-              padding: "8px 20px", fontSize: 13, fontWeight: 600,
-              color: "#334155", border: "none", cursor: "pointer",
-              opacity: offset + PAGE_SIZE >= total ? 0.35 : 1,
+              padding: "9px 22px", fontSize: 12, fontWeight: 700,
+              color: "var(--text-muted)", border: "none", cursor: "pointer",
+              opacity: offset + PAGE_SIZE >= total ? .35 : 1,
             }}
           >
             Next →
