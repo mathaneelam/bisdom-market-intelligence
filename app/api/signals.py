@@ -4,19 +4,26 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.base import get_db
 from app.models.signal import Signal
+from app.models.processed_signal import ProcessedSignal
 
 router = APIRouter(prefix="/signals", tags=["signals"])
 
 
 @router.get("/stats")
 async def signal_stats(db: AsyncSession = Depends(get_db)):
-    """Counts by stream — used by the Dashboard summary cards."""
+    """Counts by stream — uses AI-classified streams from processed_signals for accuracy."""
+    # Raw signal count
+    raw = await db.execute(select(func.count(Signal.id)))
+    total = raw.scalar() or 0
+
+    # AI-classified stream counts (from processed_signals — these reflect what Claude actually classified)
     result = await db.execute(
-        select(Signal.stream, func.count(Signal.id)).group_by(Signal.stream)
+        select(ProcessedSignal.stream, func.count(ProcessedSignal.id)).group_by(ProcessedSignal.stream)
     )
     by_stream = {row[0] or "unknown": row[1] for row in result}
+
     return {
-        "total": sum(by_stream.values()),
+        "total": total,
         "pain_pulse": by_stream.get("pain_pulse", 0),
         "competitor_move": by_stream.get("competitor_move", 0),
         "opportunity_signal": by_stream.get("opportunity_signal", 0),

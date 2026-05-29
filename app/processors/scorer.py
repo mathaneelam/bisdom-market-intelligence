@@ -6,13 +6,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import base as models_base
 from app.models.signal import Signal
 from app.models.processed_signal import ProcessedSignal
-from app.processors.gemini_processor import GeminiProcessor
+from app.processors.bedrock_processor import BedrockProcessor
 
 logger = logging.getLogger(__name__)
 
 class Scorer:
     def __init__(self):
-        self.processor = GeminiProcessor()
+        self.processor = BedrockProcessor()
 
     async def process_batch(self, batch_size: int = 50) -> int:
         """

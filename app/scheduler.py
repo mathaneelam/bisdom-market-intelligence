@@ -43,6 +43,14 @@ async def run_ai_scorer():
     logger.info("Scheduler: AI Scorer processed %d signals.", count)
     return count
 
+async def run_pattern_matcher():
+    from app.processors.pattern_matcher import PatternMatcher
+    logger.info("Scheduler: Running Pattern Matcher...")
+    matcher = PatternMatcher()
+    count = await matcher.process_unmatched(batch_size=50)
+    logger.info("Scheduler: Pattern Matcher linked %d signals.", count)
+    return count
+
 async def run_brief_builder():
     from app.processors.brief_builder import BriefBuilder
     logger.info("Scheduler: Running Brief Builder...")
@@ -113,6 +121,16 @@ def setup_jobs():
         hour=5,
         minute=0,
         id="ai_processing",
+        replace_existing=True,
+    )
+
+    # Daily 5:15 AM IST — Pattern matching (cluster signals into themes)
+    scheduler.add_job(
+        run_pattern_matcher,
+        "cron",
+        hour=5,
+        minute=15,
+        id="pattern_matcher",
         replace_existing=True,
     )
 

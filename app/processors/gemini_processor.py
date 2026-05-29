@@ -44,7 +44,7 @@ class GeminiProcessor:
     def __init__(self):
         if settings.GEMINI_API_KEY:
             genai.configure(api_key=settings.GEMINI_API_KEY)
-            self.model = genai.GenerativeModel('gemini-2.5-flash', system_instruction=SYSTEM_PROMPT)
+            self.model = genai.GenerativeModel('gemini-2.0-flash', system_instruction=SYSTEM_PROMPT)
         else:
             self.model = None
             logger.warning("GEMINI_API_KEY is not set. Processor will return mocked data.")

@@ -56,3 +56,14 @@ while building Bisdom. Every session must teach, not just build.
 11. **Track what's been learned**
     Maintain a mental model of what concepts Mathan has already seen.
     Don't re-explain things already covered. Build on top of them.
+
+12. **Always present the plan before building**
+    Before writing any code for a new feature, present a clear plan:
+    what will change, which files are touched, what the user will see.
+    Wait for Mathan's input/approval before starting. Never build
+    silently — he wants to understand and shape every decision.
+
+13. **Dates on everything**
+    Every piece of data shown in the UI must include a date — signal
+    collected date, review date, article date. Mathan needs to know
+    when something happened, not just what happened.

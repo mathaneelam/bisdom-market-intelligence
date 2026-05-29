@@ -5,6 +5,7 @@ the pipeline right now without waiting for the scheduler.
 
   POST /trigger/collect          — run all collectors
   POST /trigger/process          — run AI scorer on unprocessed signals
+  POST /trigger/patterns         — match signals to recurring patterns
   POST /trigger/brief            — rebuild today's intelligence brief
   POST /trigger/deliver/telegram — push today's brief to Telegram
   POST /trigger/all              — full pipeline end-to-end
@@ -46,6 +47,18 @@ async def trigger_process():
     count = await run_ai_scorer()
     return {"status": "ok", "processed": count,
             "message": f"AI scorer ran. {count} signals processed."}
+
+
+# ─── Patterns ─────────────────────────────────────────────────────────────────
+
+@router.post("/patterns")
+async def trigger_patterns():
+    """Match processed signals to recurring patterns (or create new ones)."""
+    from app.scheduler import run_pattern_matcher
+    logger.info("Manual trigger: patterns")
+    count = await run_pattern_matcher()
+    return {"status": "ok", "matched": count,
+            "message": f"Pattern matcher ran. {count} signals linked to patterns."}
 
 
 # ─── Brief ────────────────────────────────────────────────────────────────────
@@ -117,7 +130,7 @@ async def trigger_all():
     """
     from app.scheduler import (
         run_rss_collector, run_reddit_collector, run_playstore_collector,
-        run_ai_scorer, run_brief_builder, run_telegram_delivery,
+        run_ai_scorer, run_pattern_matcher, run_brief_builder, run_telegram_delivery,
     )
     logger.info("Manual trigger: full pipeline")
 
@@ -125,6 +138,7 @@ async def trigger_all():
     await run_reddit_collector()
     await run_playstore_collector()
     await run_ai_scorer()
+    await run_pattern_matcher()
     await run_brief_builder()
     await run_telegram_delivery(force=True)
 

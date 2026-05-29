@@ -4,6 +4,8 @@ from app.models.brief import Brief
 from app.models.competitor import Competitor
 from app.models.trade_show import TradeShow
 from app.models.keyword import Keyword
+from app.models.pattern import Pattern
+from app.models.signal_pattern import SignalPattern
 
 __all__ = [
     "Signal",
@@ -12,4 +14,6 @@ __all__ = [
     "Competitor",
     "TradeShow",
     "Keyword",
+    "Pattern",
+    "SignalPattern",
 ]

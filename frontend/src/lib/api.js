@@ -17,4 +17,7 @@ export const api = {
   briefs:        ()                         => get("/briefs"),
   competitors:   ()                         => get("/competitors"),
   tradeShows:    (upcomingOnly = true)      => get(`/trade-shows?upcoming_only=${upcomingOnly}`),
+  topPatterns:   (limit = 5)               => get(`/patterns/top?limit=${limit}`),
+  patterns:      ()                        => get("/patterns"),
+  patternSignals:(id)                      => get(`/patterns/${id}/signals`),
 };
