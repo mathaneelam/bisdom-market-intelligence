@@ -14,7 +14,7 @@ COMPETITOR_FEEDS = [
 
     # Textile & garment industry news
     {"name": "Fibre2Fashion",       "url": "https://www.fibre2fashion.com/rss/news/default.xml"},
-    {"name": "Just Style",          "url": "https://www.just-style.com/feed/"},
+    # {"name": "Just Style",          "url": "https://www.just-style.com/feed/"}, # Removed to reduce generic corporate noise
     {"name": "Sourcing Journal",    "url": "https://sourcingjournal.com/feed/"},
     {"name": "FashionNetwork India","url": "https://in.fashionnetwork.com/rss/news.xml"},
 

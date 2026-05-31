@@ -6,22 +6,22 @@ from app.config import settings
 async def clean_noise():
     models_base.init_db(settings.DATABASE_URL)
     async with models_base.AsyncSessionLocal() as session:
-        # Keywords for noise
-        noise_keywords = ['IPO', 'leadership', 'CEO', 'stock', 'Authentic Brands', 'earnings', 'reshuffle']
+        queries = [
+            "raw_content ILIKE '%JD.com%'",
+            "raw_content ILIKE '%decarbonisation%'",
+            "raw_content ILIKE '%returns friction%'",
+            "raw_content ILIKE '%Abercrombie & Fitch%'"
+        ]
         
-        # Build the WHERE clause
-        where_clauses = " OR ".join([f"raw_content ILIKE '%{kw}%' OR summary ILIKE '%{kw}%'" for kw in noise_keywords])
-        query = f"SELECT id FROM signals WHERE {where_clauses}"
+        where_clause = " OR ".join(queries)
         
-        res = await session.execute(text(query))
+        res = await session.execute(text(f"SELECT id FROM signals WHERE {where_clause}"))
         s_ids = [str(r[0]) for r in res.fetchall()]
-        
         if not s_ids:
-            print('No noise signals found.')
+            print('No noise found.')
             return
             
-        print(f"Found {len(s_ids)} noisy signals. Deleting...")
-        
+        print(f'Found {len(s_ids)} noisy signals.')
         s_ids_str = ','.join(f"'{i}'" for i in s_ids)
         
         res2 = await session.execute(text(f"SELECT id FROM processed_signals WHERE signal_id IN ({s_ids_str})"))
@@ -36,7 +36,7 @@ async def clean_noise():
         await session.execute(text(f"DELETE FROM signals WHERE id IN ({s_ids_str})"))
         
         await session.commit()
-        print('Cleaned up noises!')
+        print('Noise cleaned up successfully!')
 
 if __name__ == '__main__':
     asyncio.run(clean_noise())

@@ -54,6 +54,7 @@
 - **No Laziness** — Find root causes. No temporary fixes. Apply senior developer standards.
 - **Minimal Impact** — Only touch what's necessary. No side effects. No new bugs.
 - **Complete Data Removal** — When asked to remove unwanted information/sources, ALWAYS do two things: 1) Stop the scraper from looking for it, AND 2) Instantly run a script to erase the historical data from the database.
+- **Answer First, Act Later** — If the user asks a diagnostic question (e.g., "Can you see this data?" or "Where is this located?"), strictly answer the question and stop. Do NOT proactively write scripts, delete data, or execute commands unless explicitly instructed to do so.
 
 ---
 
