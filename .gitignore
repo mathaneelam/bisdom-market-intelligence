@@ -15,3 +15,8 @@ frontend/dist/
 *.sqlite3
 .vscode/
 .idea/
+
+# Recycle Bin — keep README but ignore actual deleted data files
+bin/*.json
+bin/*.py
+bin/*.csv
