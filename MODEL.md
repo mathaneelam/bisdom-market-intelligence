@@ -53,6 +53,7 @@
 - **Simplicity First** — Write minimal code that solves the problem. Nothing speculative.
 - **No Laziness** — Find root causes. No temporary fixes. Apply senior developer standards.
 - **Minimal Impact** — Only touch what's necessary. No side effects. No new bugs.
+- **Complete Data Removal** — When asked to remove unwanted information/sources, ALWAYS do two things: 1) Stop the scraper from looking for it, AND 2) Instantly run a script to erase the historical data from the database.
 
 ---
 
