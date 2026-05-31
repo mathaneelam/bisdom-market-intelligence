@@ -1,0 +1,20 @@
+# fly.toml app configuration file
+
+# You can change this if the name is already taken globally
+app = "bisdom-intelligence-api"
+primary_region = "bom" # Mumbai region for fastest speed in India
+
+[build]
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  # CRITICAL: This is what prevents the server from going to sleep like Render did
+  auto_stop_machines = false 
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+[deploy]
+  # This automatically creates your database tables during deployment
+  release_command = "alembic upgrade head"

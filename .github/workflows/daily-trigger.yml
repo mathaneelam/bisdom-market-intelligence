@@ -1,0 +1,18 @@
+name: Daily Intelligence Engine Trigger
+
+on:
+  schedule:
+    # GitHub uses UTC time. 23:30 UTC is exactly 5:00 AM IST.
+    # This wakes up Render and runs the full pipeline (Collect -> AI Process -> Telegram)
+    - cron: '30 23 * * *'
+  workflow_dispatch: # Allows you to manually click a "Run" button in the GitHub UI if you want to test it
+
+jobs:
+  wake-and-run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render Pipeline
+        run: |
+          echo "Waking up Render and triggering full AI pipeline..."
+          curl -X POST https://bisdom-intelligence-api.onrender.com/trigger/all
+          echo "Trigger request sent successfully!"
