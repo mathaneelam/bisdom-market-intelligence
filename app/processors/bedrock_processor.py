@@ -32,6 +32,7 @@ You will encounter a lot of generic retail and fashion news. You MUST score the 
 1. PAIN PULSE (Score 8-10): Complaints about existing platforms or processes. Look specifically for:
    - General Platform Dissatisfaction (Score 8): ANY negative review or complaint about IndiaMART, TradeIndia, Alibaba, or similar B2B platforms. Even general dissatisfaction like "not satisfied", "bad experience", "not worth it" qualifies. These are gold.
    - The Directory Trap: "indiamart only gives numbers not deals", "alibaba too much spam", "tradeindia leads don't convert", "wasting money on directories"
+   - Fake Leads & Sourcing Inefficiencies: "fake buyers", "spam inquiry", "no response", "difficulty finding buyers", "current sourcing process inefficiencies" (Do NOT flag logistics/shipping issues)
    - High Cost Zero ROI: "paid 2 lakh no order", "subscription not worth it", "indiamart renewal waste", "tradeindia waste money"
    - Execution & Negotiation Friction: "too much time evaluating suppliers", "managing negotiations on whatsapp", "comparing prices in spreadsheets", "manual follow-ups taking too long", "lost track of supplier quote"
    - WhatsApp Chaos: "manage on whatsapp difficult", "lost buyer late reply", "no order history whatsapp", "conversation lost vendor"
