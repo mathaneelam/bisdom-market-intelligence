@@ -1,135 +1,125 @@
 """
-Bisdom Recycle Bin Manager
-==========================
-Handles saving deleted content to the bin/, restoring it, and auto-cleanup after 7 days.
+Bisdom Cloud Bin Manager
+========================
+Saves deleted records to the `deleted_signals` table in Supabase.
+Runs 24/7 on Render — works whether your laptop is on or off.
 
 Usage:
-    # Save database records to bin before deleting
     from bin_manager import BinManager
-    bm = BinManager()
-    bm.save_db_records(records, source_name="signals")
+    bm = BinManager(session)
 
-    # Save deleted code to bin before removing
-    bm.save_code(content, original_filename="bedrock_processor.py")
+    # Save records to bin before deleting
+    await bm.save(records, source_name="signals", reason="User requested noise removal")
 
-    # Restore latest item from bin
-    bm.list_bin()
+    # List everything in the bin
+    await bm.list_bin()
 
-    # Clean up files older than 7 days
-    bm.cleanup(days=7)
+    # Restore records from bin by keyword
+    await bm.restore(keyword="signals")
+
+    # Auto-cleanup records older than 7 days (runs automatically at 3AM IST)
+    await bm.cleanup(days=7)
 """
 
-import json
-import os
+import logging
 from datetime import datetime, timedelta
-from pathlib import Path
+from sqlalchemy import select, delete
+from sqlalchemy.ext.asyncio import AsyncSession
 
-BIN_DIR = Path(__file__).parent / "bin"
-BIN_DIR.mkdir(exist_ok=True)
+from app.models.deleted_signal import DeletedSignal
+
+logger = logging.getLogger(__name__)
 
 
 class BinManager:
-    def __init__(self):
-        self.bin_dir = BIN_DIR
+    def __init__(self, session: AsyncSession):
+        self.session = session
 
-    def _timestamp(self):
-        return datetime.utcnow().strftime("%Y-%m-%d_%H%M%S")
-
-    def save_db_records(self, records: list[dict], source_name: str = "signals") -> str:
-        """Save a list of database records (as dicts) to the bin as JSON."""
-        filename = f"{source_name}_{self._timestamp()}.json"
-        filepath = self.bin_dir / filename
-        with open(filepath, "w", encoding="utf-8") as f:
-            json.dump(records, f, indent=2, default=str)
-        print(f"[BIN] Saved {len(records)} records → bin/{filename}")
-        return str(filepath)
-
-    def save_code(self, content: str, original_filename: str) -> str:
-        """Save deleted code content to the bin preserving the file extension."""
-        ext = Path(original_filename).suffix
-        stem = Path(original_filename).stem
-        filename = f"{stem}_{self._timestamp()}{ext}"
-        filepath = self.bin_dir / filename
-        with open(filepath, "w", encoding="utf-8") as f:
-            f.write(content)
-        print(f"[BIN] Saved code → bin/{filename}")
-        return str(filepath)
-
-    def list_bin(self):
-        """List all files currently in the bin with their age."""
-        files = sorted(self.bin_dir.glob("*"), key=os.path.getmtime, reverse=True)
-        files = [f for f in files if f.name != "README.md"]
-        if not files:
-            print("[BIN] Bin is empty.")
-            return
+    async def save(self, records: list[dict], source_name: str = "signals", reason: str = "Deleted by user") -> int:
+        """
+        Save a list of records (as dicts) to the bin before permanent deletion.
+        Returns the number of records saved.
+        """
         now = datetime.utcnow()
-        print(f"\n{'File':<50} {'Age':<15} {'Expires In'}")
-        print("-" * 80)
-        for f in files:
-            mtime = datetime.utcfromtimestamp(os.path.getmtime(f))
-            age = now - mtime
-            expires_in = timedelta(days=7) - age
-            age_str = f"{age.days}d {age.seconds // 3600}h ago"
-            exp_str = f"{max(0, expires_in.days)}d {max(0, expires_in.seconds // 3600)}h left" if expires_in.total_seconds() > 0 else "EXPIRED"
-            print(f"{f.name:<50} {age_str:<15} {exp_str}")
+        expires_at = now + timedelta(days=7)
 
-    def restore_latest(self, keyword: str = None) -> str:
-        """Return the content of the latest bin file matching an optional keyword."""
-        files = sorted(self.bin_dir.glob("*"), key=os.path.getmtime, reverse=True)
-        files = [f for f in files if f.name != "README.md"]
-        if keyword:
-            files = [f for f in files if keyword.lower() in f.name.lower()]
-        if not files:
-            print(f"[BIN] No files found{' matching: ' + keyword if keyword else ''}.")
-            return None
-        latest = files[0]
-        print(f"[BIN] Restoring: bin/{latest.name}")
-        return latest.read_text(encoding="utf-8")
+        bin_records = [
+            DeletedSignal(
+                original_id=str(r.get("id", "")),
+                source_name=source_name,
+                content=r,
+                deleted_reason=reason,
+                deleted_at=now,
+                expires_at=expires_at,
+            )
+            for r in records
+        ]
+        self.session.add_all(bin_records)
+        await self.session.flush()
+        logger.info("[BIN] Saved %d record(s) to bin (expires %s).", len(bin_records), expires_at.date())
+        return len(bin_records)
 
-    def cleanup(self, days: int = 7):
-        """Permanently delete files older than `days` days from BOTH local disk AND git."""
-        import subprocess
+    async def list_bin(self) -> list[dict]:
+        """List all records currently in the bin."""
+        stmt = select(DeletedSignal).order_by(DeletedSignal.deleted_at.desc())
+        result = await self.session.execute(stmt)
+        rows = result.scalars().all()
+        if not rows:
+            logger.info("[BIN] Bin is empty.")
+            return []
         now = datetime.utcnow()
-        files = [f for f in self.bin_dir.glob("*") if f.name != "README.md"]
-        deleted = 0
-        for f in files:
-            mtime = datetime.utcfromtimestamp(os.path.getmtime(f))
-            if (now - mtime).days >= days:
-                # Step 1: Remove from git tracking (in case it was ever committed)
-                try:
-                    subprocess.run(
-                        ["git", "rm", "--cached", "--force", str(f)],
-                        capture_output=True, cwd=str(self.bin_dir.parent)
-                    )
-                except Exception:
-                    pass  # If not tracked by git, that's fine
+        items = []
+        for row in rows:
+            age = now - row.deleted_at
+            expires_in = row.expires_at - now if row.expires_at else None
+            items.append({
+                "id": str(row.id),
+                "source": row.source_name,
+                "reason": row.deleted_reason,
+                "deleted_at": str(row.deleted_at.date()),
+                "expires_in_days": max(0, expires_in.days) if expires_in else "unknown",
+            })
+            logger.info("[BIN] %s | source=%s | deleted=%s | expires_in=%s days",
+                        row.id, row.source_name, row.deleted_at.date(),
+                        max(0, expires_in.days) if expires_in else "?")
+        return items
 
-                # Step 2: Delete from local disk
-                f.unlink()
-                print(f"[BIN] Permanently deleted from local + git: {f.name} (older than {days} days)")
-                deleted += 1
+    async def restore(self, keyword: str = None, bin_id: str = None) -> list[dict]:
+        """
+        Restore records from the bin.
+        Filter by source_name keyword or specific bin record ID.
+        Returns the raw content of the restored records.
+        """
+        stmt = select(DeletedSignal)
+        if bin_id:
+            stmt = stmt.where(DeletedSignal.id == bin_id)
+        elif keyword:
+            stmt = stmt.where(DeletedSignal.source_name.ilike(f"%{keyword}%"))
+        stmt = stmt.order_by(DeletedSignal.deleted_at.desc())
 
-        # Step 3: If anything was removed from git, commit the removal
-        if deleted > 0:
-            try:
-                subprocess.run(
-                    ["git", "commit", "-m", f"BIN cleanup: permanently removed {deleted} expired file(s)"],
-                    capture_output=True, cwd=str(self.bin_dir.parent)
-                )
-                subprocess.run(
-                    ["git", "push"],
-                    capture_output=True, cwd=str(self.bin_dir.parent)
-                )
-                print(f"[BIN] Git cleanup committed and pushed.")
-            except Exception as e:
-                print(f"[BIN] Git push skipped: {e}")
+        result = await self.session.execute(stmt)
+        rows = result.scalars().all()
+
+        if not rows:
+            logger.info("[BIN] No records found to restore.")
+            return []
+
+        restored = [row.content for row in rows]
+        logger.info("[BIN] Restored %d record(s) from bin.", len(restored))
+        return restored
+
+    async def cleanup(self, days: int = 7) -> int:
+        """
+        Permanently delete bin records older than `days` days.
+        Runs automatically at 3AM IST every day on Render.
+        Returns number of records permanently deleted.
+        """
+        expiry_cutoff = datetime.utcnow()
+        stmt = delete(DeletedSignal).where(DeletedSignal.expires_at <= expiry_cutoff)
+        result = await self.session.execute(stmt)
+        count = result.rowcount
+        if count:
+            logger.info("[BIN] Permanently deleted %d expired record(s) from cloud bin.", count)
         else:
-            print(f"[BIN] Nothing to clean up. All files are within {days} days.")
-        return deleted
-
-
-
-if __name__ == "__main__":
-    bm = BinManager()
-    bm.list_bin()
-    bm.cleanup(days=7)
+            logger.info("[BIN] Nothing to clean up. All bin records are within %d days.", days)
+        return count

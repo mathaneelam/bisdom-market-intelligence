@@ -103,15 +103,15 @@ async def run_telegram_delivery(force: bool = False):
 
 # ─── Bin Cleanup ──────────────────────────────────────────────────────────────
 
-def run_bin_cleanup():
-    """Auto-purge expired bin files from local disk AND git (runs daily)."""
-    import sys, os
-    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+async def run_bin_cleanup():
+    """Auto-purge expired bin records from Supabase (runs daily at 3AM IST on Render)."""
     from bin_manager import BinManager
-    logger.info("Scheduler: Running Bin Cleanup (7-day rule)...")
-    bm = BinManager()
-    deleted = bm.cleanup(days=7)
-    logger.info("Scheduler: Bin Cleanup complete. %d file(s) permanently removed.", deleted)
+    logger.info("Scheduler: Running Cloud Bin Cleanup (7-day rule)...")
+    async with models_base.AsyncSessionLocal() as session:
+        bm = BinManager(session)
+        deleted = await bm.cleanup(days=7)
+        await session.commit()
+    logger.info("Scheduler: Bin Cleanup complete. %d record(s) permanently removed.", deleted)
 
 
 def setup_jobs():
