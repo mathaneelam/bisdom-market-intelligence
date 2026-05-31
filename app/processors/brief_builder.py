@@ -1,6 +1,6 @@
 import logging
 import asyncio
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, date, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -44,8 +44,9 @@ class BriefBuilder:
         """
         Builds the daily brief by aggregating top unique signals.
         """
-        today = datetime.utcnow().date()
-        yesterday_dt = datetime.utcnow() - timedelta(days=1)
+        IST = timezone(timedelta(hours=5, minutes=30))
+        today = datetime.now(IST).date()
+        yesterday_dt = datetime.now(IST) - timedelta(days=1)
         
         logger.info(f"Building intelligence brief for {today}")
         
