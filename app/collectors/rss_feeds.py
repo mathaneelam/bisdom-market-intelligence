@@ -19,7 +19,7 @@ COMPETITOR_FEEDS = [
     {"name": "FashionNetwork India","url": "https://in.fashionnetwork.com/rss/news.xml"},
 
     # General tech / startup funding (competitor move signals)
-    {"name": "TechCrunch",          "url": "https://techcrunch.com/feed/"},
+    # (TechCrunch removed per user request to reduce noise)
 ]
 
 class RSSCollector(BaseCollector):

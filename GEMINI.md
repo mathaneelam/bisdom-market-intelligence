@@ -1,1 +1,3 @@
-Read MODEL.md, dev-instructions.md and teaching-mode.md before every session.
+Read MODEL.md, PLAN.md and TEACH.md before every session.
+
+

@@ -32,6 +32,25 @@ async def run_playstore_collector():
     collector = PlayStoreCollector()
     await collector.run()
 
+async def run_google_trends_collector():
+    from app.collectors.google_trends import GoogleTrendsCollector
+    logger.info("Scheduler: Running Google Trends Collector...")
+    collector = GoogleTrendsCollector()
+    await collector.run()
+
+async def run_news_collector():
+    from app.collectors.news import NewsCollector
+    logger.info("Scheduler: Running News Collector...")
+    collector = NewsCollector()
+    await collector.run()
+
+async def run_instagram_collector():
+    from app.collectors.instagram import InstagramCollector
+    logger.info("Scheduler: Running Instagram Collector...")
+    collector = InstagramCollector()
+    await collector.run()
+
+
 
 # ─── Processors ───────────────────────────────────────────────────────────────
 
@@ -111,6 +130,33 @@ def setup_jobs():
         "interval",
         hours=12,
         id="playstore_collector",
+        replace_existing=True,
+    )
+
+    # Every 12 hours — Google Trends (market sentiment & keywords)
+    scheduler.add_job(
+        run_google_trends_collector,
+        "interval",
+        hours=12,
+        id="google_trends_collector",
+        replace_existing=True,
+    )
+
+    # Every 8 hours — Google News (competitor moves & PR)
+    scheduler.add_job(
+        run_news_collector,
+        "interval",
+        hours=8,
+        id="news_collector",
+        replace_existing=True,
+    )
+
+    # Every 12 hours — Instagram (opportunity signals)
+    scheduler.add_job(
+        run_instagram_collector,
+        "interval",
+        hours=12,
+        id="instagram_collector",
         replace_existing=True,
     )
 
