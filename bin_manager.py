@@ -87,19 +87,46 @@ class BinManager:
         return latest.read_text(encoding="utf-8")
 
     def cleanup(self, days: int = 7):
-        """Permanently delete files older than `days` days."""
+        """Permanently delete files older than `days` days from BOTH local disk AND git."""
+        import subprocess
         now = datetime.utcnow()
         files = [f for f in self.bin_dir.glob("*") if f.name != "README.md"]
         deleted = 0
         for f in files:
             mtime = datetime.utcfromtimestamp(os.path.getmtime(f))
             if (now - mtime).days >= days:
+                # Step 1: Remove from git tracking (in case it was ever committed)
+                try:
+                    subprocess.run(
+                        ["git", "rm", "--cached", "--force", str(f)],
+                        capture_output=True, cwd=str(self.bin_dir.parent)
+                    )
+                except Exception:
+                    pass  # If not tracked by git, that's fine
+
+                # Step 2: Delete from local disk
                 f.unlink()
-                print(f"[BIN] Permanently deleted: {f.name} (older than {days} days)")
+                print(f"[BIN] Permanently deleted from local + git: {f.name} (older than {days} days)")
                 deleted += 1
-        if deleted == 0:
+
+        # Step 3: If anything was removed from git, commit the removal
+        if deleted > 0:
+            try:
+                subprocess.run(
+                    ["git", "commit", "-m", f"BIN cleanup: permanently removed {deleted} expired file(s)"],
+                    capture_output=True, cwd=str(self.bin_dir.parent)
+                )
+                subprocess.run(
+                    ["git", "push"],
+                    capture_output=True, cwd=str(self.bin_dir.parent)
+                )
+                print(f"[BIN] Git cleanup committed and pushed.")
+            except Exception as e:
+                print(f"[BIN] Git push skipped: {e}")
+        else:
             print(f"[BIN] Nothing to clean up. All files are within {days} days.")
         return deleted
+
 
 
 if __name__ == "__main__":

@@ -101,7 +101,18 @@ async def run_telegram_delivery(force: bool = False):
         return success
 
 
-# ─── Job registration ──────────────────────────────────────────────────────────
+# ─── Bin Cleanup ──────────────────────────────────────────────────────────────
+
+def run_bin_cleanup():
+    """Auto-purge expired bin files from local disk AND git (runs daily)."""
+    import sys, os
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from bin_manager import BinManager
+    logger.info("Scheduler: Running Bin Cleanup (7-day rule)...")
+    bm = BinManager()
+    deleted = bm.cleanup(days=7)
+    logger.info("Scheduler: Bin Cleanup complete. %d file(s) permanently removed.", deleted)
+
 
 def setup_jobs():
     """Register all scheduled jobs."""
@@ -197,6 +208,16 @@ def setup_jobs():
         hour=6,
         minute=0,
         id="delivery_telegram",
+        replace_existing=True,
+    )
+
+    # Daily 3:00 AM IST — Auto-purge bin files older than 7 days (local + git)
+    scheduler.add_job(
+        run_bin_cleanup,
+        "cron",
+        hour=3,
+        minute=0,
+        id="bin_cleanup",
         replace_existing=True,
     )
 
