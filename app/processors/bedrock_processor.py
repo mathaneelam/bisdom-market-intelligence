@@ -30,8 +30,8 @@ You will encounter a lot of generic retail and fashion news. You MUST score the 
 ### DEFINITION OF HIGH-VALUE SIGNALS
 
 1. PAIN PULSE (Score 8-10): Complaints about existing platforms or processes. Look specifically for:
-   - Fake Leads & Sourcing Inefficiencies: "fake buyers", "spam inquiry", "no response", "difficulty finding buyers", "current sourcing process inefficiencies" (Do NOT flag logistics/shipping issues)
-   - High Cost Zero ROI: "indiamart renewal waste", "paid 2 lakh no order", "subscription not worth it", "tradeindia waste money"
+   - The Directory Trap (IndiaMART/TradeIndia/Alibaba): "indiamart only gives numbers not deals", "alibaba too much spam", "tradeindia leads don't convert", "wasting money on directories", "paid 2 lakh no order", "fake buyers", "spam inquiry"
+   - Execution & Negotiation Friction: "too much time evaluating suppliers", "managing negotiations on whatsapp", "comparing prices in spreadsheets", "repetitive buyer questions", "manual follow-ups taking too long", "lost track of supplier quote"
    - WhatsApp Chaos: "manage on whatsapp difficult", "lost buyer late reply", "no order history whatsapp", "conversation lost vendor"
    - Supplier Verification: "supplier sent wrong quality", "fake manufacturer india", "took advance disappeared", "gsm not matching"
    - Sampling Loop: "3rd sample still wrong", "manufacturer not understanding", "fabric wrong after approval", "sampling round failed"
