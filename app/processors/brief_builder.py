@@ -46,7 +46,7 @@ class BriefBuilder:
         """
         IST = timezone(timedelta(hours=5, minutes=30))
         today = datetime.now(IST).date()
-        yesterday_dt = datetime.now(IST) - timedelta(days=1)
+        yesterday_dt = (datetime.now(IST) - timedelta(days=1)).replace(tzinfo=None)
         
         logger.info(f"Building intelligence brief for {today}")
         
