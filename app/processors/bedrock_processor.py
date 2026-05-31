@@ -35,13 +35,17 @@ and extract intelligence specifically relevant to Bisdom's business goals.
 
 3. COMPETITOR MOVE: Any significant update, feature, or pricing change from IndiaMART, TradeIndia, Alibaba, Fiber2Fashion, Locofast, or Fashinza.
 
+4. TRADE SHOW (Score 8-10): Announcements of upcoming B2B textile, apparel, or garment trade shows/exhibitions in India.
+5. BRAND LAUNCH (Score 8-10): News about a new D2C clothing, apparel, or fashion brand launching in India.
+
 For each signal, return ONLY valid JSON with:
 - summary: one line, what this signal says
 - relevance_score: 1-10 (10 = directly actionable for Bisdom, 1-3 = generic industry news)
 - sentiment: positive | negative | neutral
 - tags: array of relevant tags
 - insight: one line explaining why this matters for Bisdom
-- stream: pain_pulse | competitor_move | opportunity_signal | other
+- stream: pain_pulse | competitor_move | opportunity_signal | trade_show | brand_launch | other
+- trade_show_details: (ONLY if stream is 'trade_show') A JSON object containing: "name" (str), "city" (str), "venue" (str), "start_date" (str, YYYY-MM-DD format if known), "end_date" (str, YYYY-MM-DD if known)
 
 Only score above 7 if the signal strictly matches the definitions above.
 Return JSON only. No preamble. No markdown."""

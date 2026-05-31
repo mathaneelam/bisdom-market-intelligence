@@ -6,7 +6,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import base as models_base
 from app.models.signal import Signal
 from app.models.processed_signal import ProcessedSignal
+from app.models.trade_show import TradeShow
 from app.processors.bedrock_processor import BedrockProcessor
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +57,35 @@ class Scorer:
                     )
                     session.add(processed_signal)
                     
+                    # 3.5 Check for Trade Show details and create record
+                    if analysis.get("stream") == "trade_show" and analysis.get("trade_show_details"):
+                        trade_details = analysis["trade_show_details"]
+                        
+                        start_dt = None
+                        if trade_details.get("start_date"):
+                            try:
+                                start_dt = datetime.strptime(trade_details["start_date"], "%Y-%m-%d").date()
+                            except ValueError:
+                                pass
+                                
+                        end_dt = None
+                        if trade_details.get("end_date"):
+                            try:
+                                end_dt = datetime.strptime(trade_details["end_date"], "%Y-%m-%d").date()
+                            except ValueError:
+                                pass
+
+                        ts = TradeShow(
+                            name=trade_details.get("name", "Unknown Trade Show"),
+                            city=trade_details.get("city"),
+                            venue=trade_details.get("venue"),
+                            start_date=start_dt,
+                            end_date=end_dt,
+                            website=signal.source_url,
+                            relevance_note=analysis.get("insight")
+                        )
+                        session.add(ts)
+                        
                     # 4. Mark original as processed
                     signal.is_processed = True
                     processed_count += 1

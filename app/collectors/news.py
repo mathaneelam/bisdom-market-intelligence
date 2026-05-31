@@ -21,6 +21,15 @@ COMPETITOR_NEWS_KEYWORDS = [
 OPPORTUNITY_NEWS_KEYWORDS = [
     "funded D2C brand India",
     "garment manufacturer India expansion",
+    "new clothing brand launch India",
+    "D2C apparel brand funding",
+]
+
+TRADE_SHOW_KEYWORDS = [
+    "apparel trade show India",
+    "textile exhibition Mumbai",
+    "garment expo Delhi",
+    "upcoming fashion exhibition India",
 ]
 
 class NewsCollector(BaseCollector):
@@ -75,6 +84,10 @@ class NewsCollector(BaseCollector):
             
         for keyword in OPPORTUNITY_NEWS_KEYWORDS:
             signals = await self._fetch_news_for_keyword(keyword, "opportunity_signal")
+            all_signals.extend(signals)
+            
+        for keyword in TRADE_SHOW_KEYWORDS:
+            signals = await self._fetch_news_for_keyword(keyword, "trade_show")
             all_signals.extend(signals)
             
         return all_signals
