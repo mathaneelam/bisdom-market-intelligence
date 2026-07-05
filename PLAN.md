@@ -56,6 +56,8 @@ bisdom-intelligence/
 │   │   ├── ollama_processor.py
 │   │   ├── scorer.py
 │   │   ├── deduplicator.py
+│   │   ├── pattern_matcher.py
+│   │   ├── content_generator.py
 │   │   └── brief_builder.py
 │   │
 │   ├── delivery/
@@ -71,7 +73,9 @@ bisdom-intelligence/
 │   │   ├── signals.py
 │   │   ├── briefs.py
 │   │   ├── competitors.py
-│   │   └── trade_shows.py
+│   │   ├── trade_shows.py
+│   │   ├── patterns.py
+│   │   └── content.py
 │   │
 │   └── models/
 │       ├── __init__.py
@@ -79,7 +83,10 @@ bisdom-intelligence/
 │       ├── processed_signal.py
 │       ├── brief.py
 │       ├── competitor.py
-│       └── trade_show.py
+│       ├── trade_show.py
+│       ├── pattern.py
+│       ├── signal_pattern.py
+│       └── content_piece.py
 │
 ├── frontend/
 │   └── src/
@@ -88,9 +95,12 @@ bisdom-intelligence/
 │       │   ├── Signals.jsx
 │       │   ├── Sources.jsx
 │       │   ├── Competitors.jsx
-│       │   └── TradeShows.jsx
+│       │   ├── TradeShows.jsx
+│       │   └── ContentBank.jsx
 │       └── components/
-│           └── Layout.jsx
+│           ├── Layout.jsx
+│           ├── PlatformPreview.jsx
+│           └── contentBankShared.jsx
 │
 ├── migrations/
 ├── scripts/
@@ -169,6 +179,40 @@ CREATE TABLE trade_shows (
     relevance_note  TEXT,
     is_upcoming     BOOLEAN DEFAULT TRUE
 );
+
+-- Recurring pain/opportunity themes, clustered from processed_signals by the LLM
+CREATE TABLE patterns (
+    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name              VARCHAR(200),
+    description       TEXT,
+    category          VARCHAR(50),   -- pain_pulse, opportunity_signal, competitor_move
+    bisdom_action     TEXT,
+    signal_count      INTEGER DEFAULT 1,
+    trend             VARCHAR(20) DEFAULT 'new',   -- new, growing, stable, declining
+    importance_score  INTEGER DEFAULT 50,
+    first_seen        DATE DEFAULT CURRENT_DATE,
+    last_seen         DATE DEFAULT CURRENT_DATE,
+    created_at        TIMESTAMP DEFAULT NOW()
+);
+
+-- Content Bank: one pattern -> one calendar day -> one row per platform format.
+-- image_brief/comment_note/scheduled_date added 2026-07-05 for the weekly calendar redesign.
+CREATE TABLE content_pieces (
+    id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    pattern_id         UUID REFERENCES patterns(id),
+    audience           VARCHAR(20),   -- buyer | supplier
+    format             VARCHAR(20),   -- linkedin | linkedin_article | instagram_post | instagram_reel | whatsapp | email | blog
+    tone               VARCHAR(20),   -- educational | contrast
+    title              TEXT,
+    body               TEXT,
+    image_brief        TEXT,          -- AI-written description of the accompanying visual (no image model wired up)
+    comment_note       TEXT,          -- author's first-comment text
+    scheduled_date     DATE,          -- the calendar day this piece belongs to
+    source_review_ids  UUID[],        -- receipts: the real signals this content is grounded in
+    model              VARCHAR(50),
+    status             VARCHAR(20) DEFAULT 'draft',  -- draft | approved | posted | rejected
+    created_at         TIMESTAMP DEFAULT NOW()
+);
 ```
 
 ---
@@ -197,9 +241,9 @@ All intelligence streams are strictly targeted at **India's domestic market**, f
   - `"Fashinza funding"`
   - `"B2B textile platform India launch"`
 
-### Stream 3 — Opportunity Signal (Garment Buyers Only)
-* **Description:** Direct sourcing requests, collection launches, and factory needs from clothing brands, boutiques, and startup fashion labels.
-* **Instagram Hashtags:**
+### Stream 3 — Opportunity Signal
+* **Description:** Direct sourcing requests, collection launches, and factory needs. Audience focus is deliberately different per source (set 2026-07-05): Instagram stays buyer-only by design; LinkedIn and Reddit cover both buyers (brands looking for manufacturers) and suppliers (manufacturers with capacity looking for buyers).
+* **Instagram Hashtags (buyer-only):**
   - `#clothingbrand`
   - `#fashionbrand`
   - `#clothingbrandindia`
@@ -209,8 +253,12 @@ All intelligence streams are strictly targeted at **India's domestic market**, f
   - `#boutiqueindia`
   - `#clothingstartup`
 * **LinkedIn Search Queries (via Google Index):**
-  - `site:linkedin.com/posts ("looking for garment manufacturer" OR "looking for fabric supplier" OR "need garment manufacturer") AND ("India" OR "Indian" OR "Tiruppur" OR "Surat" OR "Ludhiana" OR "Mumbai" OR "Delhi" OR "Ahmedabad" OR "Coimbatore")`
-  - `site:linkedin.com/posts ("sourcing clothing brand" OR "clothing brand manufacturer" OR "looking for knitwear manufacturer") AND ("India" OR "Indian" OR "Tiruppur" OR "Surat" OR "Ludhiana" OR "Ahmedabad" OR "Coimbatore")`
+  - `site:linkedin.com/posts ("looking for garment manufacturer" OR "looking for fabric supplier" OR "need garment manufacturer") AND ("India" OR "Indian" OR "Tiruppur" OR "Surat" OR "Ludhiana" OR "Mumbai" OR "Delhi" OR "Ahmedabad" OR "Coimbatore")` (buyer)
+  - `site:linkedin.com/posts ("sourcing clothing brand" OR "clothing brand manufacturer" OR "looking for knitwear manufacturer") AND ("India" OR "Indian" OR "Tiruppur" OR "Surat" OR "Ludhiana" OR "Ahmedabad" OR "Coimbatore")` (buyer)
+  - `site:linkedin.com/posts ("garment manufacturer" OR "textile factory" OR "knitwear manufacturer") AND ("export ready" OR "looking for buyers" OR "spare capacity" OR "MOQ available") AND ("India" OR "Tiruppur" OR "Surat" OR "Ludhiana" OR "Coimbatore")` (supplier, added 2026-07-05)
+* **Reddit Keywords:**
+  - Buyer: `"looking for garment manufacturer India"`, `"fabric supplier India MOQ"`, `"clothing brand manufacturer India"`, `"D2C brand sourcing India"`, `"knitwear manufacturer India"`, `"need textile supplier India"`, `"recommend fabric manufacturer India"`
+  - Supplier (added 2026-07-05): `"manufacturer looking for buyers India"`, `"garment factory export capacity India"`, `"textile mill surplus capacity India"`
 
 ---
 
@@ -218,15 +266,21 @@ All intelligence streams are strictly targeted at **India's domestic market**, f
 
 | Job                 | Cadence                     |
 | ------------------- | --------------------------- |
-| Google News RSS     | Every 6 hours               |
-| LinkedIn RSS Search | Every 8 hours               |
-| Instagram hashtags  | Every 12 hours              |
+| RSS feeds           | Every 6 hours               |
+| Reddit Collector    | Every 4 hours               |
 | Play Store reviews  | Every 12 hours              |
-| Reddit Collector    | Every 12 hours              |
-| Google Trends       | Daily 2:00 AM IST           |
-| AI Scorer           | Daily 5:00 AM IST           |
+| Google Trends       | Every 12 hours              |
+| Google News RSS     | Every 12 hours (was 8h, dropped 2026-07-05 — `when:7d` on the query keeps it fresh without a 3rd daily fetch) |
+| Instagram hashtags  | Every 12 hours              |
+| LinkedIn RSS Search | Every 12 hours (was 8h, same reasoning as Google News) |
+| AI Scorer           | Daily 5:00 AM IST — processes pain_pulse + newest signals first (added 2026-07-05, was unordered) |
+| Pattern Matcher     | Daily 5:15 AM IST           |
 | Brief builder       | Daily 5:30 AM IST           |
-| Delivery (all 3)    | Daily 6:00 AM IST           |
+| Content Generator   | Daily 5:45 AM IST — tops up a rolling 7-day content calendar; no-ops once the week is full (see Content Bank below) |
+| Delivery (Telegram) | Daily 6:00 AM IST           |
+| Bin cleanup         | Daily 3:00 AM IST — purges recycle-bin records older than 7 days |
+
+**Recency cutoffs (added 2026-07-05, to stop stale signals from reaching the AI scorer):** Google News & LinkedIn RSS queries append `when:7d`; Play Store reviews older than 60 days are skipped; Instagram posts older than 7 days are skipped; Reddit is already `sort=new` on both its OAuth and RSS paths.
 
 ---
 
@@ -294,3 +348,4 @@ Return JSON only. No preamble. No markdown.
 *   **[x] Phase 3: AI Processing** — Completed. Ollama/AI integration created with prompts for scoring, tagging, summarization, and duplication checks.
 *   **[x] Phase 4: Delivery Channels** — Completed. Configured daily Morning Brief generators delivering to Email (Resend), Telegram (Bot API), and WhatsApp.
 *   **[x] Phase 5: Dashboard Frontend** — Completed. dark-mode dashboard built with routing, real-time filters, "Sources" card grids, and clickable snippet links to original posts.
+*   **[x] Phase 6: Pattern Matching & Content Bank** — Completed 2026-07-05. `pattern_matcher.py` clusters processed signals into recurring pain/opportunity themes (`patterns` table). `content_generator.py` turns high-importance patterns into ready-to-review marketing content (`content_pieces` table): one pattern per calendar day, batched a rolling 7 days ahead, audience rotated ~70% buyer / 30% supplier, and repurposed across LinkedIn (post + article), Instagram (post + reel), WhatsApp, Email, and Blog. Each piece includes an AI-written image brief and a first-comment note. The "Content Bank" dashboard page renders a weekly calendar of platform-native mockups with Approve/Decline/Edit/Posted actions, alongside a flat filterable list view.
