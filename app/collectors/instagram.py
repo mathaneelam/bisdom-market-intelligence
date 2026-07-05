@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 OPPORTUNITY_HASHTAGS = [
     "garmentmanufacturerindia",
     "fabricsupplierindia",
-    "clothingmanufacturer",
+    "clothingmanufacturerindia",
     "textilesupplierindia",
 ]
 

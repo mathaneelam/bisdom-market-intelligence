@@ -20,6 +20,7 @@ You will encounter a lot of generic retail and fashion news. You MUST score the 
 - Generic Industry Analyst Reports: (e.g., "How returns friction is slowing sales", "GlobalData market analysis")
 - High-Level Sustainability/ESG Panels: (e.g., "Decarbonisation risks leaving workers behind")
 - Internal Corporate Drama: (e.g., "Authentic Brands reshuffles leadership", CEO appointments, IPOs)
+- Non-India Content (STRICT NOISE FILTER): Any news, posts, or sourcing requests that are not related to or originating from India. Bisdom is strictly focused on the Indian B2B market (e.g. textile hubs like Tiruppur, Surat, Ludhiana, Ahmedabad, Coimbatore). Any posts or news about foreign brands, international factories (e.g. in Bangladesh, Vietnam, China, US, UK), or non-India sourcing requests MUST be scored as a 1, 2, or 3.
 
 ### DEFINITION OF HIGH-VALUE SIGNALS
 
@@ -54,7 +55,7 @@ For each signal, return ONLY valid JSON with:
 - stream: pain_pulse | competitor_move | opportunity_signal | trade_show | brand_launch | other
 - trade_show_details: (ONLY if stream is 'trade_show') A JSON object containing: "name" (str), "city" (str), "venue" (str), "start_date" (str, YYYY-MM-DD format if known), "end_date" (str, YYYY-MM-DD if known)
 
-Only score above 7 if the signal strictly matches the definitions above.
+Only score above 7 if the signal strictly matches the definitions above and is directly relevant to the Indian B2B market.
 Return JSON only. No preamble. No markdown."""
 
 DEDUP_SYSTEM = """You are an assistant that finds semantically duplicate market intelligence signals.

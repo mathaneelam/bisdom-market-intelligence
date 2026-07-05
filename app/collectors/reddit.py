@@ -15,20 +15,20 @@ PAIN_PULSE_KEYWORDS = [
     "IndiaMART fake leads",
     "B2B platform complaint India",
     "garment sourcing problem India",
-    "manufacturer WhatsApp chaos",
+    "manufacturer WhatsApp chaos India",
     "textile supplier fraud India",
     "IndiaMART renewal not worth it",
-    "sourcing vendor problem",
+    "sourcing vendor problem India",
 ]
 
 OPPORTUNITY_KEYWORDS = [
     "looking for garment manufacturer India",
     "fabric supplier India MOQ",
-    "clothing brand manufacturer",
+    "clothing brand manufacturer India",
     "D2C brand sourcing India",
     "knitwear manufacturer India",
-    "need textile supplier",
-    "recommend fabric manufacturer",
+    "need textile supplier India",
+    "recommend fabric manufacturer India",
 ]
 
 class RedditCollector(BaseCollector):

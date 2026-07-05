@@ -14,7 +14,6 @@ COMPETITOR_FEEDS = [
 
     # Textile & garment industry news
     {"name": "Fibre2Fashion",       "url": "https://www.fibre2fashion.com/rss/news/default.xml"},
-    {"name": "Sourcing Journal",    "url": "https://sourcingjournal.com/feed/"},
     {"name": "FashionNetwork India","url": "https://in.fashionnetwork.com/rss/news.xml"},
 
     # General tech / startup funding (competitor move signals)

@@ -13,18 +13,18 @@ LINKEDIN_QUERIES = [
     # Opportunity Signals
     {
         "stream": "opportunity_signal",
-        "description": "Looking for manufacturer",
-        "query": 'site:linkedin.com/posts "looking for garment manufacturer" OR "looking for fabric supplier" OR "need garment manufacturer"'
+        "description": "Looking for manufacturer (India)",
+        "query": 'site:linkedin.com/posts ("looking for garment manufacturer" OR "looking for fabric supplier" OR "need garment manufacturer") AND ("India" OR "Indian" OR "Tiruppur" OR "Surat" OR "Ludhiana" OR "Mumbai" OR "Delhi" OR "Ahmedabad" OR "Coimbatore")'
     },
     {
         "stream": "opportunity_signal",
-        "description": "Clothing brand sourcing",
-        "query": 'site:linkedin.com/posts "sourcing clothing brand" OR "clothing brand manufacturer" OR "looking for knitwear manufacturer"'
+        "description": "Clothing brand sourcing (India)",
+        "query": 'site:linkedin.com/posts ("sourcing clothing brand" OR "clothing brand manufacturer" OR "looking for knitwear manufacturer") AND ("India" OR "Indian" OR "Tiruppur" OR "Surat" OR "Ludhiana" OR "Ahmedabad" OR "Coimbatore")'
     },
     # Pain Pulse Signals
     {
         "stream": "pain_pulse",
-        "description": "B2B platform complaints",
+        "description": "B2B platform complaints (India)",
         "query": 'site:linkedin.com/posts "indiamart fake leads" OR "indiamart waste" OR "tradeindia complaint" OR "indiamart alternative"'
     }
 ]
