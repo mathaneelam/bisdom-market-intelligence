@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
-import { Radio } from "lucide-react";
+import { Radio, ExternalLink } from "lucide-react";
 
 const STREAMS = [
   { value: "",                   label: "All",             color: "#1889F6" },
@@ -190,12 +190,43 @@ export default function Signals() {
                   {s.source ?? "—"}
                 </td>
                 <td style={{ padding: "13px 20px", color: "var(--text-muted)", maxWidth: 320 }}>
-                  <span title={s.snippet} style={{
-                    display: "block", overflow: "hidden",
-                    textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12,
-                  }}>
-                    {s.snippet || "—"}
-                  </span>
+                  {s.source_url ? (
+                    <a 
+                      href={s.source_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      style={{ 
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                        color: "var(--text-muted)", 
+                        textDecoration: "none",
+                        transition: "color .15s"
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.color = "var(--blue)"}
+                      onMouseLeave={e => e.currentTarget.style.color = "var(--text-muted)"}
+                    >
+                      <span title={s.snippet} style={{
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        fontSize: 12,
+                      }}>
+                        {s.snippet || "—"}
+                      </span>
+                      <ExternalLink size={12} style={{ opacity: 0.6, flexShrink: 0 }} />
+                    </a>
+                  ) : (
+                    <span title={s.snippet} style={{
+                      display: "block",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      fontSize: 12,
+                    }}>
+                      {s.snippet || "—"}
+                    </span>
+                  )}
                 </td>
                 <td style={{ padding: "13px 20px", color: "var(--text-dim)", whiteSpace: "nowrap", fontSize: 12 }}>
                   {s.author ?? "—"}

@@ -8,7 +8,8 @@ import {
   Globe, 
   Radio, 
   Database,
-  Users
+  Users,
+  ExternalLink
 } from "lucide-react";
 
 const STREAM_META = {
@@ -291,12 +292,43 @@ export default function Sources() {
                       <StreamBadge stream={s.stream} />
                     </td>
                     <td style={{ padding: "13px 20px", color: "var(--text-muted)", maxWidth: 380 }}>
-                      <span title={s.snippet} style={{
-                        display: "block", overflow: "hidden",
-                        textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12,
-                      }}>
-                        {s.snippet || "—"}
-                      </span>
+                      {s.source_url ? (
+                        <a 
+                          href={s.source_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          style={{ 
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 6,
+                            color: "var(--text-muted)", 
+                            textDecoration: "none",
+                            transition: "color .15s"
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.color = "var(--blue)"}
+                          onMouseLeave={e => e.currentTarget.style.color = "var(--text-muted)"}
+                        >
+                          <span title={s.snippet} style={{
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                            fontSize: 12,
+                          }}>
+                            {s.snippet || "—"}
+                          </span>
+                          <ExternalLink size={12} style={{ opacity: 0.6, flexShrink: 0 }} />
+                        </a>
+                      ) : (
+                        <span title={s.snippet} style={{
+                          display: "block",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          fontSize: 12,
+                        }}>
+                          {s.snippet || "—"}
+                        </span>
+                      )}
                     </td>
                     <td style={{ padding: "13px 20px", color: "var(--text-dim)", whiteSpace: "nowrap", fontSize: 12 }}>
                       {s.author ?? "—"}
