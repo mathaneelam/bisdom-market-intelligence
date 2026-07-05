@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.models.base import init_db
 from app.scheduler import scheduler, setup_jobs
-from app.api import signals, briefs, competitors, trade_shows, trigger, patterns
+from app.api import signals, briefs, competitors, trade_shows, trigger, patterns, content
 
 logging.basicConfig(
     level=logging.INFO,
@@ -50,6 +50,7 @@ app.include_router(competitors.router)
 app.include_router(trade_shows.router)
 app.include_router(trigger.router)
 app.include_router(patterns.router)
+app.include_router(content.router)
 
 @app.get("/", tags=["health"])
 @app.head("/", tags=["health"])

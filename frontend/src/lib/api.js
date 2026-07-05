@@ -6,6 +6,16 @@ async function get(path) {
   return res.json();
 }
 
+async function patch(path, body) {
+  const res = await fetch(`${BASE}${path}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`API error ${res.status} on ${path}`);
+  return res.json();
+}
+
 export const api = {
   signalStats:   ()                         => get("/signals/stats"),
   signals:       (stream, limit = 50, offset = 0, source = null) => {
@@ -22,4 +32,11 @@ export const api = {
   topPatterns:   (limit = 5)               => get(`/patterns/top?limit=${limit}`),
   patterns:      ()                        => get("/patterns"),
   patternSignals:(id)                      => get(`/patterns/${id}/signals`),
+  contentPieces: (filters = {}, limit = 50, offset = 0) => {
+    const q = new URLSearchParams({ limit, offset });
+    for (const [k, v] of Object.entries(filters)) if (v) q.set(k, v);
+    return get(`/content-pieces?${q}`);
+  },
+  contentPiece:       (id)         => get(`/content-pieces/${id}`),
+  updateContentPiece: (id, body)   => patch(`/content-pieces/${id}`, body),
 };

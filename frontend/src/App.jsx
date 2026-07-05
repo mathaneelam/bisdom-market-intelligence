@@ -5,17 +5,19 @@ import Signals from "./pages/Signals";
 import Sources from "./pages/Sources";
 import Competitors from "./pages/Competitors";
 import TradeShows from "./pages/TradeShows";
+import ContentBank from "./pages/ContentBank";
 
 export default function App() {
   return (
     <BrowserRouter>
       <Layout>
         <Routes>
-          <Route path="/"            element={<Dashboard />}  />
-          <Route path="/signals"     element={<Signals />}    />
-          <Route path="/sources"     element={<Sources />}    />
-          <Route path="/competitors" element={<Competitors />}/>
-          <Route path="/trade-shows" element={<TradeShows />} />
+          <Route path="/"             element={<Dashboard />}   />
+          <Route path="/signals"      element={<Signals />}     />
+          <Route path="/sources"      element={<Sources />}     />
+          <Route path="/competitors"  element={<Competitors />} />
+          <Route path="/trade-shows"  element={<TradeShows />}  />
+          <Route path="/content-bank" element={<ContentBank />} />
         </Routes>
       </Layout>
     </BrowserRouter>

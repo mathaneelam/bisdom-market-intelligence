@@ -83,6 +83,14 @@ async def run_brief_builder():
     builder = BriefBuilder()
     await builder.run()
 
+async def run_content_generator():
+    from app.processors.content_generator import ContentGenerator
+    logger.info("Scheduler: Running Content Generator...")
+    generator = ContentGenerator()
+    count = await generator.run()
+    logger.info("Scheduler: Content Generator created %d piece(s).", count)
+    return count
+
 
 # ─── Delivery ─────────────────────────────────────────────────────────────────
 
@@ -214,6 +222,16 @@ def setup_jobs():
         hour=5,
         minute=30,
         id="brief_builder",
+        replace_existing=True,
+    )
+
+    # Daily 5:45 AM IST — Generate content bank drafts from top pain patterns
+    scheduler.add_job(
+        run_content_generator,
+        "cron",
+        hour=5,
+        minute=45,
+        id="content_generator",
         replace_existing=True,
     )
 
