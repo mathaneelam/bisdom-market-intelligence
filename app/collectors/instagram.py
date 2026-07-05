@@ -11,10 +11,14 @@ logger = logging.getLogger(__name__)
 
 # Instagram Hashtags to track opportunity signals
 OPPORTUNITY_HASHTAGS = [
-    "garmentmanufacturerindia",
-    "fabricsupplierindia",
-    "clothingmanufacturerindia",
-    "textilesupplierindia",
+    "clothingbrand",
+    "fashionbrand",
+    "clothingbrandindia",
+    "fashionbrandindia",
+    "clothinglabelindia",
+    "d2cbrandindia",
+    "boutiqueindia",
+    "clothingstartup",
 ]
 
 class InstagramCollector(BaseCollector):
