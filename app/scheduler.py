@@ -168,11 +168,13 @@ def setup_jobs():
         replace_existing=True,
     )
 
-    # Every 8 hours — Google News (competitor moves & PR)
+    # Every 12 hours — Google News (competitor moves & PR). Was every 8h;
+    # dropped now that `when:7d` on the query + newest-first scoring keep
+    # results fresh without needing a third daily fetch of the same headlines.
     scheduler.add_job(
         run_news_collector,
         "interval",
-        hours=8,
+        hours=12,
         id="news_collector",
         replace_existing=True,
     )
@@ -186,11 +188,12 @@ def setup_jobs():
         replace_existing=True,
     )
 
-    # Every 8 hours — LinkedIn search dorks via Google Index
+    # Every 12 hours — LinkedIn search dorks via Google Index. Was every 8h;
+    # same reasoning as the Google News job above.
     scheduler.add_job(
         run_linkedin_collector,
         "interval",
-        hours=8,
+        hours=12,
         id="linkedin_collector",
         replace_existing=True,
     )

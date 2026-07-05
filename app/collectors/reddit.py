@@ -22,6 +22,7 @@ PAIN_PULSE_KEYWORDS = [
 ]
 
 OPPORTUNITY_KEYWORDS = [
+    # Buyer side — brands/corporates looking for manufacturers
     "looking for garment manufacturer India",
     "fabric supplier India MOQ",
     "clothing brand manufacturer India",
@@ -29,6 +30,10 @@ OPPORTUNITY_KEYWORDS = [
     "knitwear manufacturer India",
     "need textile supplier India",
     "recommend fabric manufacturer India",
+    # Supplier side — manufacturers with capacity looking for buyers
+    "manufacturer looking for buyers India",
+    "garment factory export capacity India",
+    "textile mill surplus capacity India",
 ]
 
 class RedditCollector(BaseCollector):

@@ -21,6 +21,11 @@ LINKEDIN_QUERIES = [
         "description": "Clothing brand sourcing (India)",
         "query": 'site:linkedin.com/posts ("sourcing clothing brand" OR "clothing brand manufacturer" OR "looking for knitwear manufacturer") AND ("India" OR "Indian" OR "Tiruppur" OR "Surat" OR "Ludhiana" OR "Ahmedabad" OR "Coimbatore")'
     },
+    {
+        "stream": "opportunity_signal",
+        "description": "Manufacturer capacity available (India) — supplier side",
+        "query": 'site:linkedin.com/posts ("garment manufacturer" OR "textile factory" OR "knitwear manufacturer") AND ("export ready" OR "looking for buyers" OR "spare capacity" OR "MOQ available") AND ("India" OR "Tiruppur" OR "Surat" OR "Ludhiana" OR "Coimbatore")'
+    },
     # Pain Pulse Signals
     {
         "stream": "pain_pulse",
@@ -36,8 +41,9 @@ class LinkedInCollector(BaseCollector):
     stream = "opportunity_signal" # Default stream fallback
 
     def _get_rss_url(self, query: str) -> str:
-        # Google News RSS search URL
-        encoded_query = urllib.parse.quote_plus(query)
+        # Google News RSS search URL. when:7d keeps results genuinely recent —
+        # this search is relevance-sorted by default, not recency-sorted.
+        encoded_query = urllib.parse.quote_plus(f"{query} when:7d")
         return f"https://news.google.com/rss/search?q={encoded_query}&hl=en-IN&gl=IN&ceid=IN:en"
 
     async def _fetch_query(self, query_info: dict) -> list[dict]:

@@ -41,7 +41,10 @@ class NewsCollector(BaseCollector):
     stream = "mixed"
 
     async def _fetch_news_for_keyword(self, keyword: str, stream_type: str) -> list[dict]:
-        encoded_kw = urllib.parse.quote(keyword)
+        # when:7d keeps results genuinely recent — Google News RSS search is
+        # relevance-sorted by default and can otherwise surface old articles
+        # that happen to match the keyword well.
+        encoded_kw = urllib.parse.quote(f"{keyword} when:7d")
         url = f"https://news.google.com/rss/search?q={encoded_kw}&hl=en-IN&gl=IN&ceid=IN:en"
         signals = []
         

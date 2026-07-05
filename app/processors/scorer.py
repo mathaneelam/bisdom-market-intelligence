@@ -1,6 +1,6 @@
 import logging
 import asyncio
-from sqlalchemy import select
+from sqlalchemy import select, case
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import base as models_base
@@ -12,6 +12,16 @@ from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
+# Lower number = scored first. The daily batch is fixed-size, so on a heavy
+# day this stops generic news/mixed backlog from crowding out fresher,
+# higher-value pain-pulse complaints for the token budget.
+STREAM_PRIORITY = {
+    "pain_pulse": 0,
+    "opportunity_signal": 1,
+    "competitor_move": 2,
+}
+
+
 class Scorer:
     def __init__(self):
         self.processor = OllamaProcessor()
@@ -19,17 +29,25 @@ class Scorer:
     async def process_batch(self, batch_size: int = 50) -> int:
         """
         Fetches unprocessed signals, runs them through Ollama, and saves the results.
-        Returns the number of signals processed.
+        Newest-first within stream priority (pain_pulse > opportunity_signal >
+        competitor_move > everything else), so the fixed daily AI budget goes to
+        the freshest, most actionable signals first. Returns the number processed.
         """
         processed_count = 0
-        
+
         async with models_base.AsyncSessionLocal() as session:
             # 1. Fetch unprocessed and non-duplicate signals
-            stmt = select(Signal).where(
-                Signal.is_processed == False, 
-                Signal.is_duplicate == False
-            ).limit(batch_size)
-            
+            priority = case(STREAM_PRIORITY, value=Signal.stream, else_=len(STREAM_PRIORITY))
+            stmt = (
+                select(Signal)
+                .where(
+                    Signal.is_processed == False,
+                    Signal.is_duplicate == False,
+                )
+                .order_by(priority, Signal.collected_at.desc())
+                .limit(batch_size)
+            )
+
             result = await session.execute(stmt)
             signals = result.scalars().all()
             

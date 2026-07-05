@@ -1,10 +1,12 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from google_play_scraper import reviews, Sort
 
 from app.collectors.base import BaseCollector
 
 logger = logging.getLogger(__name__)
+
+MAX_REVIEW_AGE_DAYS = 60  # skip reviews older than this — keeps pain patterns current
 
 # Target apps for Play Store reviews (competitors)
 PLAY_STORE_APPS = [
@@ -41,13 +43,19 @@ class PlayStoreCollector(BaseCollector):
                     count=50 # Number of reviews to fetch per app
                 )
                 
+                cutoff = datetime.utcnow() - timedelta(days=MAX_REVIEW_AGE_DAYS)
+
                 for review in result:
                     # We are mostly interested in bad reviews to find user pain points
                     if review.get("score", 5) <= 2:
                         content = review.get("content", "").strip()
                         if len(content) < 10:
                             continue # Ignore very short generic complaints
-                            
+
+                        review_at = review.get("at")
+                        if review_at and review_at < cutoff:
+                            continue # Too old — keep pain patterns current
+
                         all_signals.append({
                             "stream": self.stream,
                             "source": f"Play Store ({app_name})",

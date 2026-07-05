@@ -1,6 +1,6 @@
 import logging
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta
 import instaloader
 
 from app.collectors.base import BaseCollector
@@ -8,6 +8,8 @@ from app.collectors.instagram_session_store import load_session_from_db, save_se
 from app.config import settings
 
 logger = logging.getLogger(__name__)
+
+MAX_POST_AGE_DAYS = 7  # hashtag "top" results can surface old popular posts — keep it current
 
 # Instagram Hashtags to track opportunity signals
 OPPORTUNITY_HASHTAGS = [
@@ -64,13 +66,17 @@ class InstagramCollector(BaseCollector):
             
             # Filter and take up to 10 posts
             count = 0
+            cutoff = datetime.utcnow() - timedelta(days=MAX_POST_AGE_DAYS)
             for post in raw_posts:
                 caption_obj = post.get("caption")
                 content = caption_obj.get("text", "") if caption_obj else ""
-                
+
                 taken_at = post.get("taken_at")
                 collected_at = datetime.utcfromtimestamp(taken_at) if taken_at else datetime.utcnow()
-                
+
+                if taken_at and collected_at < cutoff:
+                    continue  # too old — hashtag "top" results aren't always recent
+
                 user_obj = post.get("user", {})
                 author = user_obj.get("username", "unknown")
                 
