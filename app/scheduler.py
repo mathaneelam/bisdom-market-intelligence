@@ -51,6 +51,13 @@ async def run_instagram_collector():
     await collector.run()
 
 
+async def run_linkedin_collector():
+    from app.collectors.linkedin import LinkedInCollector
+    logger.info("Scheduler: Running LinkedIn Collector...")
+    collector = LinkedInCollector()
+    await collector.run()
+
+
 
 # ─── Processors ───────────────────────────────────────────────────────────────
 
@@ -168,6 +175,15 @@ def setup_jobs():
         "interval",
         hours=12,
         id="instagram_collector",
+        replace_existing=True,
+    )
+
+    # Every 8 hours — LinkedIn search dorks via Google Index
+    scheduler.add_job(
+        run_linkedin_collector,
+        "interval",
+        hours=8,
+        id="linkedin_collector",
         replace_existing=True,
     )
 

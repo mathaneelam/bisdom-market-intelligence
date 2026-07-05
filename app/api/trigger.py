@@ -31,7 +31,8 @@ async def trigger_collect():
     """Run all collectors now and save new signals to the database."""
     from app.scheduler import (
         run_rss_collector, run_reddit_collector, run_playstore_collector,
-        run_google_trends_collector, run_news_collector, run_instagram_collector
+        run_google_trends_collector, run_news_collector, run_instagram_collector,
+        run_linkedin_collector
     )
     logger.info("Manual trigger: collect")
     await run_rss_collector()
@@ -40,6 +41,7 @@ async def trigger_collect():
     await run_google_trends_collector()
     await run_news_collector()
     await run_instagram_collector()
+    await run_linkedin_collector()
     return {"status": "ok", "message": "Collectors finished. Check /signals for new data."}
 
 
@@ -137,7 +139,8 @@ async def trigger_all():
     from app.scheduler import (
         run_rss_collector, run_reddit_collector, run_playstore_collector,
         run_google_trends_collector, run_news_collector, run_instagram_collector,
-        run_ai_scorer, run_pattern_matcher, run_brief_builder, run_telegram_delivery,
+        run_linkedin_collector, run_ai_scorer, run_pattern_matcher, run_brief_builder,
+        run_telegram_delivery,
     )
     logger.info("Manual trigger: full pipeline")
 
@@ -147,6 +150,7 @@ async def trigger_all():
     await run_google_trends_collector()
     await run_news_collector()
     await run_instagram_collector()
+    await run_linkedin_collector()
     await run_ai_scorer()
     await run_pattern_matcher()
     await run_brief_builder()
