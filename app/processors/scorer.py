@@ -7,18 +7,18 @@ from app.models import base as models_base
 from app.models.signal import Signal
 from app.models.processed_signal import ProcessedSignal
 from app.models.trade_show import TradeShow
-from app.processors.bedrock_processor import BedrockProcessor
+from app.processors.ollama_processor import OllamaProcessor
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
 class Scorer:
     def __init__(self):
-        self.processor = BedrockProcessor()
+        self.processor = OllamaProcessor()
 
     async def process_batch(self, batch_size: int = 50) -> int:
         """
-        Fetches unprocessed signals, runs them through Gemini, and saves the results.
+        Fetches unprocessed signals, runs them through Ollama, and saves the results.
         Returns the number of signals processed.
         """
         processed_count = 0
@@ -40,7 +40,7 @@ class Scorer:
             logger.info(f"Processing {len(signals)} signals...")
             
             for signal in signals:
-                # 2. Analyze with Gemini
+                # 2. Analyze with Ollama
                 content_to_analyze = f"Source: {signal.source}\nContent: {signal.raw_content}"
                 analysis = await self.processor.analyze_signal(content_to_analyze, default_stream=signal.stream)
                 

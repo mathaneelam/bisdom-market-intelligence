@@ -1,13 +1,12 @@
 """
 Pattern Matcher — clusters signals into recurring themes.
 
-After the scorer processes a signal, the pattern matcher asks Claude:
+After the scorer processes a signal, the pattern matcher asks the LLM:
 "Does this signal match any existing pattern, or is it a new one?"
 
 If match → link signal to pattern, increment count, update trend.
 If new  → create a new pattern from the signal.
 """
-import json
 import logging
 import asyncio
 from datetime import datetime, date, timedelta
@@ -19,46 +18,20 @@ from app.models import base as models_base
 from app.models.pattern import Pattern
 from app.models.signal_pattern import SignalPattern
 from app.models.processed_signal import ProcessedSignal
-from app.processors.bedrock_processor import BedrockProcessor, MODEL_ID
+from app.processors.ollama_processor import OllamaProcessor
 
 logger = logging.getLogger(__name__)
-
-MATCH_SYSTEM = """You are a pattern clustering assistant for Bisdom market intelligence.
-
-Given a NEW signal and a list of EXISTING patterns, determine if the signal belongs to an existing pattern or is a new one.
-
-Rules:
-- Match if the signal describes the SAME core problem/opportunity, even with different wording
-- "spam calls from IndiaMART" and "barrage of phone calls after posting" are the SAME pattern
-- "fake leads" and "wrong quality supplier" are DIFFERENT patterns
-- Be strict: only match if the core issue is truly the same
-
-Return ONLY valid JSON:
-{
-  "match": true/false,
-  "pattern_id": "uuid-of-matched-pattern" or null,
-  "new_pattern": null or {
-    "name": "Short pattern name (under 80 chars)",
-    "description": "One paragraph explaining the recurring issue",
-    "bisdom_action": "What Bisdom should do about this pattern"
-  }
-}
-
-JSON only. No preamble. No markdown."""
 
 
 class PatternMatcher:
     def __init__(self):
-        self.processor = BedrockProcessor()
+        self.processor = OllamaProcessor()
 
     async def match_signal(self, signal: ProcessedSignal, session: AsyncSession) -> str | None:
         """
         Match a single processed signal to an existing pattern, or create a new one.
         Returns the pattern_id (existing or new).
         """
-        if not self.processor.client:
-            return None
-
         # Check if already linked
         existing_link = await session.execute(
             select(SignalPattern).where(SignalPattern.signal_id == signal.id)
@@ -99,81 +72,56 @@ Score: {signal.relevance_score}
 
 This is the first signal. Create a new pattern for it."""
 
-        try:
-            response = self.processor.client.invoke_model(
-                modelId=MODEL_ID,
-                contentType="application/json",
-                accept="application/json",
-                body=json.dumps({
-                    "anthropic_version": "bedrock-2023-05-31",
-                    "max_tokens": 512,
-                    "system": MATCH_SYSTEM,
-                    "messages": [{"role": "user", "content": prompt}],
-                }),
-            )
-
-            result = json.loads(response["body"].read())
-            text = result["content"][0]["text"].strip()
-
-            if text.startswith("```json"):
-                text = text[7:]
-            if text.startswith("```"):
-                text = text[3:]
-            if text.endswith("```"):
-                text = text[:-3]
-
-            data = json.loads(text.strip())
-
-            today = date.today()
-
-            if data.get("match") and data.get("pattern_id"):
-                # Link to existing pattern
-                pattern_id = data["pattern_id"]
-
-                # Verify pattern exists
-                pattern = await session.get(Pattern, pattern_id)
-                if not pattern:
-                    logger.warning("Claude returned non-existent pattern ID: %s", pattern_id)
-                    return None
-
-                # Update pattern stats
-                pattern.signal_count += 1
-                pattern.last_seen = today
-                pattern.trend = self._calc_trend(pattern)
-                pattern.importance_score = self._calc_importance(pattern)
-
-                # Create link
-                link = SignalPattern(signal_id=signal.id, pattern_id=pattern.id)
-                session.add(link)
-
-                logger.info("Signal matched pattern: %s (count=%d)", pattern.name, pattern.signal_count)
-                return str(pattern.id)
-
-            elif data.get("new_pattern"):
-                np = data["new_pattern"]
-                pattern = Pattern(
-                    name=np.get("name", signal.summary[:80]),
-                    description=np.get("description", signal.insight),
-                    category=signal.stream,
-                    bisdom_action=np.get("bisdom_action", ""),
-                    signal_count=1,
-                    trend="new",
-                    importance_score=signal.relevance_score * 10 if signal.relevance_score else 50,
-                    first_seen=today,
-                    last_seen=today,
-                )
-                session.add(pattern)
-                await session.flush()  # Get the ID
-
-                link = SignalPattern(signal_id=signal.id, pattern_id=pattern.id)
-                session.add(link)
-
-                logger.info("New pattern created: %s", pattern.name)
-                return str(pattern.id)
-
-        except Exception as e:
-            logger.error("Pattern matching error: %s", e)
+        data = await self.processor.match_pattern(prompt)
+        if data is None:
             return None
+
+        today = date.today()
+
+        if data.get("match") and data.get("pattern_id"):
+            # Link to existing pattern
+            pattern_id = data["pattern_id"]
+
+            # Verify pattern exists
+            pattern = await session.get(Pattern, pattern_id)
+            if not pattern:
+                    logger.warning("LLM returned non-existent pattern ID: %s", pattern_id)
+                return None
+
+            # Update pattern stats
+            pattern.signal_count += 1
+            pattern.last_seen = today
+            pattern.trend = self._calc_trend(pattern)
+            pattern.importance_score = self._calc_importance(pattern)
+
+            # Create link
+            link = SignalPattern(signal_id=signal.id, pattern_id=pattern.id)
+            session.add(link)
+
+            logger.info("Signal matched pattern: %s (count=%d)", pattern.name, pattern.signal_count)
+            return str(pattern.id)
+
+        elif data.get("new_pattern"):
+            np = data["new_pattern"]
+            pattern = Pattern(
+                name=np.get("name", signal.summary[:80]),
+                description=np.get("description", signal.insight),
+                category=signal.stream,
+                bisdom_action=np.get("bisdom_action", ""),
+                signal_count=1,
+                trend="new",
+                importance_score=signal.relevance_score * 10 if signal.relevance_score else 50,
+                first_seen=today,
+                last_seen=today,
+            )
+            session.add(pattern)
+            await session.flush()
+
+            link = SignalPattern(signal_id=signal.id, pattern_id=pattern.id)
+            session.add(link)
+
+            logger.info("New pattern created: %s", pattern.name)
+            return str(pattern.id)
 
     def _calc_trend(self, pattern: Pattern) -> str:
         """Calculate trend based on recency and growth."""
@@ -236,7 +184,7 @@ This is the first signal. Create a new pattern for it."""
                 result = await self.match_signal(signal, session)
                 if result:
                     matched += 1
-                await asyncio.sleep(0.3)  # Gentle on Bedrock
+                await asyncio.sleep(0.3)  # Gentle on Ollama
 
             await session.commit()
 

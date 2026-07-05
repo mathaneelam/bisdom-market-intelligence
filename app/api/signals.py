@@ -16,7 +16,7 @@ async def signal_stats(db: AsyncSession = Depends(get_db)):
     raw = await db.execute(select(func.count(Signal.id)))
     total = raw.scalar() or 0
 
-    # AI-classified stream counts (from processed_signals — these reflect what Claude actually classified)
+    # AI-classified stream counts (from processed_signals — these reflect what the LLM actually classified)
     result = await db.execute(
         select(ProcessedSignal.stream, func.count(ProcessedSignal.id)).group_by(ProcessedSignal.stream)
     )

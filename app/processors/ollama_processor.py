@@ -1,13 +1,7 @@
-"""
-AI signal processor using AWS Bedrock — Claude Haiku 4.5.
-
-Replaces the Gemini processor with zero changes to the scorer/deduplicator
-interface. Just swap the import.
-"""
 import json
 import logging
-import boto3
 from typing import Optional
+from openai import AsyncOpenAI
 
 from app.config import settings
 
@@ -75,59 +69,52 @@ Return ONLY valid JSON in this exact format:
 If there are no duplicates, return {"duplicate_ids": []}.
 Return JSON only. No preamble. No markdown."""
 
-MODEL_ID = "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+MATCH_SYSTEM = """You are a pattern clustering assistant for Bisdom market intelligence.
+
+Given a NEW signal and a list of EXISTING patterns, determine if the signal belongs to an existing pattern or is a new one.
+
+Rules:
+- Match if the signal describes the SAME core problem/opportunity, even with different wording
+- "spam calls from IndiaMART" and "barrage of phone calls after posting" are the SAME pattern
+- "fake leads" and "wrong quality supplier" are DIFFERENT patterns
+- Be strict: only match if the core issue is truly the same
+
+Return ONLY valid JSON:
+{
+  "match": true/false,
+  "pattern_id": "uuid-of-matched-pattern" or null,
+  "new_pattern": null or {
+    "name": "Short pattern name (under 80 chars)",
+    "description": "One paragraph explaining the recurring issue",
+    "bisdom_action": "What Bisdom should do about this pattern"
+  }
+}
+
+JSON only. No preamble. No markdown."""
 
 
-def _get_client():
-    """Create a Bedrock Runtime client."""
-    return boto3.client(
-        "bedrock-runtime",
-        region_name=settings.AWS_REGION,
-        aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-        aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-    )
-
-
-class BedrockProcessor:
-    """Scores raw signals using Claude Haiku 4.5 on AWS Bedrock."""
+class OllamaProcessor:
+    """Scores raw signals using Ollama (OpenAI-compatible API)."""
 
     def __init__(self):
-        if settings.AWS_ACCESS_KEY_ID and settings.AWS_SECRET_ACCESS_KEY:
-            self.client = _get_client()
-        else:
-            self.client = None
-            logger.warning("AWS credentials not set. Processor will return mocked data.")
+        api_key = settings.OLLAMA_API_KEY or "ollama"
+        base_url = settings.OLLAMA_BASE_URL or "http://localhost:11434/v1"
+        self.model = settings.OLLAMA_MODEL or "llama3"
+        self.client = AsyncOpenAI(api_key=api_key, base_url=base_url)
 
     async def analyze_signal(self, raw_content: str, default_stream: str = "unknown") -> Optional[dict]:
-        if not self.client:
-            return {
-                "summary": f"Mock summary of: {raw_content[:50]}...",
-                "relevance_score": 5,
-                "sentiment": "neutral",
-                "tags": ["mock"],
-                "insight": "Mock insight — set AWS credentials to enable real analysis.",
-                "stream": default_stream,
-            }
-
         try:
-            response = self.client.invoke_model(
-                modelId=MODEL_ID,
-                contentType="application/json",
-                accept="application/json",
-                body=json.dumps({
-                    "anthropic_version": "bedrock-2023-05-31",
-                    "max_tokens": 512,
-                    "system": SYSTEM_PROMPT,
-                    "messages": [
-                        {"role": "user", "content": raw_content}
-                    ],
-                }),
+            response = await self.client.chat.completions.create(
+                model=self.model,
+                max_tokens=512,
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": raw_content},
+                ],
             )
 
-            result = json.loads(response["body"].read())
-            text = result["content"][0]["text"].strip()
+            text = response.choices[0].message.content.strip()
 
-            # Strip markdown fences if present
             if text.startswith("```json"):
                 text = text[7:]
             if text.startswith("```"):
@@ -137,7 +124,6 @@ class BedrockProcessor:
 
             data = json.loads(text.strip())
 
-            # Ensure required fields
             for key in ["summary", "relevance_score", "sentiment", "tags", "insight", "stream"]:
                 if key not in data:
                     data[key] = default_stream if key == "stream" else None
@@ -145,34 +131,24 @@ class BedrockProcessor:
             return data
 
         except json.JSONDecodeError as e:
-            logger.error("Failed to parse JSON from Bedrock: %s", e)
+            logger.error("Failed to parse JSON from Ollama: %s", e)
             return None
         except Exception as e:
-            logger.error("Error calling Bedrock: %s", e)
+            logger.error("Error calling Ollama: %s", e)
             return None
 
     async def find_duplicates(self, payload: str) -> list[str]:
-        """Used by the deduplicator to find semantic duplicates."""
-        if not self.client:
-            return []
-
         try:
-            response = self.client.invoke_model(
-                modelId=MODEL_ID,
-                contentType="application/json",
-                accept="application/json",
-                body=json.dumps({
-                    "anthropic_version": "bedrock-2023-05-31",
-                    "max_tokens": 1024,
-                    "system": DEDUP_SYSTEM,
-                    "messages": [
-                        {"role": "user", "content": payload}
-                    ],
-                }),
+            response = await self.client.chat.completions.create(
+                model=self.model,
+                max_tokens=1024,
+                messages=[
+                    {"role": "system", "content": DEDUP_SYSTEM},
+                    {"role": "user", "content": payload},
+                ],
             )
 
-            result = json.loads(response["body"].read())
-            text = result["content"][0]["text"].strip()
+            text = response.choices[0].message.content.strip()
 
             if text.startswith("```json"):
                 text = text[7:]
@@ -185,5 +161,31 @@ class BedrockProcessor:
             return data.get("duplicate_ids", [])
 
         except Exception as e:
-            logger.error("Error calling Bedrock for dedup: %s", e)
+            logger.error("Error calling Ollama for dedup: %s", e)
             return []
+
+    async def match_pattern(self, prompt: str) -> Optional[dict]:
+        try:
+            response = await self.client.chat.completions.create(
+                model=self.model,
+                max_tokens=512,
+                messages=[
+                    {"role": "system", "content": MATCH_SYSTEM},
+                    {"role": "user", "content": prompt},
+                ],
+            )
+
+            text = response.choices[0].message.content.strip()
+
+            if text.startswith("```json"):
+                text = text[7:]
+            if text.startswith("```"):
+                text = text[3:]
+            if text.endswith("```"):
+                text = text[:-3]
+
+            return json.loads(text.strip())
+
+        except Exception as e:
+            logger.error("Pattern matching error via Ollama: %s", e)
+            return None

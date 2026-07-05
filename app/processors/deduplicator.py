@@ -7,14 +7,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.models import base as models_base
 from app.models.processed_signal import ProcessedSignal
-from app.processors.bedrock_processor import BedrockProcessor
+from app.processors.ollama_processor import OllamaProcessor
 
 logger = logging.getLogger(__name__)
 
 
 class Deduplicator:
     def __init__(self):
-        self.processor = BedrockProcessor()
+        self.processor = OllamaProcessor()
 
     async def run(self):
         """
@@ -31,7 +31,7 @@ class Deduplicator:
             result = await session.execute(stmt)
             signals = result.scalars().all()
             
-            if not signals or not self.processor.client:
+            if not signals:
                 return []
 
             # Group by stream to reduce context window and improve accuracy
@@ -51,7 +51,7 @@ class Deduplicator:
                 dupes = await self.processor.find_duplicates(payload)
                 duplicate_ids_to_exclude.extend(dupes)
 
-                await asyncio.sleep(0.5)  # Gentle on Bedrock rate limits
+                await asyncio.sleep(0.5)  # Gentle on Ollama rate limits
 
         logger.info(f"Identified {len(duplicate_ids_to_exclude)} semantic duplicates.")
         return duplicate_ids_to_exclude
