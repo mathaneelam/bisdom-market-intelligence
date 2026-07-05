@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
 import { 
-  Instagram, 
+  Camera, 
   MessageSquare, 
   Newspaper, 
   Smartphone, 
@@ -72,7 +72,7 @@ function SkeletonRow() {
 
 function getSourceIcon(source) {
   const name = source.toLowerCase();
-  if (name.includes("instagram")) return Instagram;
+  if (name.includes("instagram")) return Camera;
   if (name.includes("reddit")) return MessageSquare;
   if (name.includes("news")) return Newspaper;
   if (name.includes("play store")) return Smartphone;
