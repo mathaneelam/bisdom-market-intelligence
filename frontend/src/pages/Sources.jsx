@@ -7,7 +7,8 @@ import {
   Smartphone, 
   Globe, 
   Radio, 
-  Database
+  Database,
+  Users
 } from "lucide-react";
 
 const STREAM_META = {
@@ -76,6 +77,7 @@ function getSourceIcon(source) {
   if (name.includes("reddit")) return MessageSquare;
   if (name.includes("news")) return Newspaper;
   if (name.includes("play store")) return Smartphone;
+  if (name.includes("linkedin")) return Users;
   return Globe;
 }
 
@@ -94,10 +96,15 @@ export default function Sources() {
     setLoadingList(true);
     api.sources()
       .then((res) => {
-        setSourcesList(res);
-        if (res && res.length > 0) {
-          // Default to the source with the highest count
-          setActiveSource(res[0].source);
+        let list = res || [];
+        const hasLinkedIn = list.some(item => item.source.toLowerCase().includes("linkedin"));
+        if (!hasLinkedIn) {
+          list = [...list, { source: "LinkedIn (via Google Index)", count: 0 }];
+        }
+        setSourcesList(list);
+        if (list.length > 0) {
+          // Default to the source with the highest count or first in list
+          setActiveSource(list[0].source);
         }
       })
       .catch(console.error)
