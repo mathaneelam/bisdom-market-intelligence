@@ -4,6 +4,7 @@ from datetime import datetime
 import instaloader
 
 from app.collectors.base import BaseCollector
+from app.collectors.instagram_session_store import load_session_from_db, save_session_to_db
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -98,29 +99,44 @@ class InstagramCollector(BaseCollector):
         try:
             L = instaloader.Instaloader()
             loop = asyncio.get_event_loop()
-            
-            # Check if we have a saved session file. If so, load it!
+            username = settings.INSTAGRAM_USERNAME
+            session_loaded = False
+
+            # 1. Try the session stored in the database first — survives redeploys
+            # on hosts with an ephemeral filesystem (Railway, Render), unlike a local file.
             try:
-                logger.info(f"InstagramCollector: Attempting to load saved session for '{settings.INSTAGRAM_USERNAME}'...")
+                logger.info(f"InstagramCollector: Attempting to load DB-stored session for '{username}'...")
+                session_loaded = await load_session_from_db(L, username)
+                if session_loaded:
+                    logger.info("InstagramCollector: Successfully loaded session from database!")
+            except Exception as db_err:
+                logger.warning(f"InstagramCollector: Could not load session from database ({db_err}).")
+
+            # 2. Fall back to a local session file (useful for local dev)
+            if not session_loaded:
+                try:
+                    logger.info(f"InstagramCollector: Attempting to load local session file for '{username}'...")
+                    await loop.run_in_executor(None, L.load_session_from_file, username)
+                    session_loaded = True
+                    logger.info("InstagramCollector: Successfully loaded local session file!")
+                    await save_session_to_db(L, username)
+                except Exception as session_err:
+                    logger.warning(f"InstagramCollector: Could not load session file ({session_err}).")
+
+            # 3. Last resort: password login, then persist the new session to the DB
+            if not session_loaded:
+                if not settings.INSTAGRAM_PASSWORD:
+                    logger.error("Instagram password not set and no session available. Skipping collection.")
+                    return []
+                logger.warning("InstagramCollector: No saved session found. Attempting password login...")
                 await loop.run_in_executor(
                     None,
-                    L.load_session_from_file,
-                    settings.INSTAGRAM_USERNAME
-                )
-                logger.info("InstagramCollector: Successfully loaded saved session file!")
-            except Exception as session_err:
-                logger.warning(f"InstagramCollector: Could not load session file ({session_err}). Attempting password login...")
-                if not settings.INSTAGRAM_PASSWORD:
-                    logger.error("Instagram password not set and no session file exists. Skipping collection.")
-                    return []
-                # Fallback to login
-                await loop.run_in_executor(
-                    None, 
-                    L.login, 
-                    settings.INSTAGRAM_USERNAME, 
+                    L.login,
+                    username,
                     settings.INSTAGRAM_PASSWORD
                 )
-            
+                await save_session_to_db(L, username)
+
             for hashtag in OPPORTUNITY_HASHTAGS:
                 signals = await self._fetch_hashtag_posts(L, hashtag)
                 all_signals.extend(signals)

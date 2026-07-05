@@ -102,9 +102,22 @@ class OllamaProcessor:
         self.model = settings.OLLAMA_MODEL or "llama3"
         self.client = AsyncOpenAI(api_key=api_key, base_url=base_url)
 
+        self.fallback_client: Optional[AsyncOpenAI] = None
+        if settings.OLLAMA_API_KEY_FALLBACK:
+            self.fallback_client = AsyncOpenAI(api_key=settings.OLLAMA_API_KEY_FALLBACK, base_url=base_url)
+
+    async def _create_completion(self, **kwargs):
+        try:
+            return await self.client.chat.completions.create(**kwargs)
+        except Exception as e:
+            if not self.fallback_client:
+                raise
+            logger.warning("Primary Ollama key failed (%s), retrying with fallback key", e)
+            return await self.fallback_client.chat.completions.create(**kwargs)
+
     async def analyze_signal(self, raw_content: str, default_stream: str = "unknown") -> Optional[dict]:
         try:
-            response = await self.client.chat.completions.create(
+            response = await self._create_completion(
                 model=self.model,
                 max_tokens=512,
                 messages=[
@@ -139,7 +152,7 @@ class OllamaProcessor:
 
     async def find_duplicates(self, payload: str) -> list[str]:
         try:
-            response = await self.client.chat.completions.create(
+            response = await self._create_completion(
                 model=self.model,
                 max_tokens=1024,
                 messages=[
@@ -166,7 +179,7 @@ class OllamaProcessor:
 
     async def match_pattern(self, prompt: str) -> Optional[dict]:
         try:
-            response = await self.client.chat.completions.create(
+            response = await self._create_completion(
                 model=self.model,
                 max_tokens=512,
                 messages=[

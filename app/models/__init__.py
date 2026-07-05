@@ -6,6 +6,7 @@ from app.models.trade_show import TradeShow
 from app.models.keyword import Keyword
 from app.models.pattern import Pattern
 from app.models.signal_pattern import SignalPattern
+from app.models.instagram_session import InstagramSession
 
 __all__ = [
     "Signal",
@@ -16,4 +17,5 @@ __all__ = [
     "Keyword",
     "Pattern",
     "SignalPattern",
+    "InstagramSession",
 ]

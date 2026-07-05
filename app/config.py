@@ -4,6 +4,7 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     OLLAMA_BASE_URL: str = "http://localhost:11434/v1"
     OLLAMA_API_KEY: str = ""
+    OLLAMA_API_KEY_FALLBACK: str = ""
     OLLAMA_MODEL: str = "llama3"
     DATABASE_URL: str = "postgresql+asyncpg://bisdom:bisdom_secret@localhost:5432/bisdom_intelligence"
     REDIS_URL: str = "redis://localhost:6379"

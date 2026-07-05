@@ -1,3 +1,4 @@
+import asyncio
 import sys
 import os
 import instaloader
@@ -6,6 +7,8 @@ import instaloader
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.config import settings
+from app.models.base import init_db
+from app.collectors.instagram_session_store import save_session_to_db
 
 def import_session():
     username = settings.INSTAGRAM_USERNAME
@@ -33,9 +36,15 @@ def import_session():
         profile = instaloader.Profile.from_username(L.context, username)
         print(f"Session verification: Logged in as profile ID {profile.userid}")
         
-        # Save session to file
+        # Save session to local file (for local dev runs)
         print(f"Saving session file for user '{username}'...")
         L.save_session_to_file(username)
+
+        # Also push to the database so Railway/Render pick it up without a volume
+        print("Pushing session to the database...")
+        init_db(settings.DATABASE_URL)
+        asyncio.run(save_session_to_db(L, username))
+
         print("\n✅ SUCCESS: Instagram session imported and saved successfully!")
         print("Our scraper can now bypass all passwords and login checks!")
         return True
