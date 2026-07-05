@@ -8,11 +8,13 @@ async function get(path) {
 
 export const api = {
   signalStats:   ()                         => get("/signals/stats"),
-  signals:       (stream, limit = 50, offset = 0) => {
+  signals:       (stream, limit = 50, offset = 0, source = null) => {
     const q = new URLSearchParams({ limit, offset });
     if (stream) q.set("stream", stream);
+    if (source) q.set("source", source);
     return get(`/signals?${q}`);
   },
+  sources:       ()                         => get("/signals/sources"),
   todayBrief:    ()                         => get("/briefs/today"),
   briefs:        ()                         => get("/briefs"),
   competitors:   ()                         => get("/competitors"),

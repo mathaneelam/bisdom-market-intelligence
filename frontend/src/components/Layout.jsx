@@ -1,9 +1,10 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { LayoutDashboard, Radio, Users, Calendar } from "lucide-react";
+import { LayoutDashboard, Radio, Users, Calendar, Globe } from "lucide-react";
 
 const nav = [
   { to: "/",            label: "Dashboard",   icon: LayoutDashboard },
   { to: "/signals",     label: "Signals",     icon: Radio           },
+  { to: "/sources",     label: "Sources",     icon: Globe           },
   { to: "/competitors", label: "Competitors", icon: Users           },
   { to: "/trade-shows", label: "Trade Shows", icon: Calendar        },
 ];

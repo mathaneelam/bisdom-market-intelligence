@@ -30,10 +30,24 @@ async def signal_stats(db: AsyncSession = Depends(get_db)):
         "by_stream": by_stream,
     }
 
+@router.get("/sources")
+async def list_sources(db: AsyncSession = Depends(get_db)):
+    """Get all unique sources and their counts."""
+    result = await db.execute(
+        select(Signal.source, func.count(Signal.id))
+        .group_by(Signal.source)
+        .order_by(func.count(Signal.id).desc())
+    )
+    return [
+        {"source": row[0] or "Unknown", "count": row[1]}
+        for row in result
+    ]
+
 
 @router.get("")
 async def list_signals(
     stream: str | None = Query(None, description="Filter by stream name"),
+    source: str | None = Query(None, description="Filter by source name"),
     limit: int = Query(50, le=200),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
@@ -45,6 +59,10 @@ async def list_signals(
     if stream:
         stmt = stmt.where(Signal.stream == stream)
         count_stmt = count_stmt.where(Signal.stream == stream)
+
+    if source:
+        stmt = stmt.where(Signal.source == source)
+        count_stmt = count_stmt.where(Signal.source == source)
 
     signals = (await db.execute(stmt)).scalars().all()
     total = (await db.execute(count_stmt)).scalar()
