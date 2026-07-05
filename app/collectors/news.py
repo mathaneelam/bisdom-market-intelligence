@@ -90,4 +90,6 @@ class NewsCollector(BaseCollector):
             signals = await self._fetch_news_for_keyword(keyword, "trade_show")
             all_signals.extend(signals)
             
-        return all_signals
+        # Sort by publication date (newest first) and limit to top 20
+        all_signals.sort(key=lambda x: x["collected_at"], reverse=True)
+        return all_signals[:20]
