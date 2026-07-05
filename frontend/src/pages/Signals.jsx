@@ -57,6 +57,16 @@ function fmt(dt) {
   });
 }
 
+const formatUrl = (url) => {
+  if (!url) return "";
+  if (url.startsWith("playstore://")) {
+    const parts = url.replace("playstore://", "").split("/");
+    const pkg = parts[0];
+    return `https://play.google.com/store/apps/details?id=${pkg}`;
+  }
+  return url;
+};
+
 function SkeletonRow() {
   return (
     <tr>
@@ -192,7 +202,7 @@ export default function Signals() {
                 <td style={{ padding: "13px 20px", color: "var(--text-muted)", maxWidth: 320 }}>
                   {s.source_url ? (
                     <a 
-                      href={s.source_url} 
+                      href={formatUrl(s.source_url)} 
                       target="_blank" 
                       rel="noopener noreferrer" 
                       style={{ 
