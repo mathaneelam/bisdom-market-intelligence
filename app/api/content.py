@@ -20,7 +20,7 @@ class ContentPieceUpdate(BaseModel):
 @router.get("")
 async def list_content_pieces(
     audience: str | None = Query(None, description="buyer | supplier"),
-    format: str | None = Query(None, description="linkedin | instagram | blog | ad | email"),
+    format: str | None = Query(None, description="linkedin | linkedin_article | instagram_post | instagram_reel | whatsapp | email | blog"),
     tone: str | None = Query(None, description="educational | contrast"),
     status: str | None = Query(None, description="draft | approved | posted | rejected"),
     pattern_id: str | None = Query(None),

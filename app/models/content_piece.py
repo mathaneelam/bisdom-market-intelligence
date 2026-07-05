@@ -9,8 +9,9 @@ from app.models.base import Base
 class ContentPiece(Base):
     """
     One piece of marketing content generated from a pain pattern.
-    A single pattern produces many pieces (LinkedIn, Instagram, blog, ad, email)
-    across two audiences (buyer, supplier). Each row is reviewed and shipped on its own.
+    A single pattern produces many pieces (LinkedIn post/article, Instagram
+    post/reel, WhatsApp, email, blog) across two audiences (buyer, supplier).
+    Each row is reviewed and shipped on its own.
     """
     __tablename__ = "content_pieces"
 
@@ -22,9 +23,10 @@ class ContentPiece(Base):
         UUID(as_uuid=True), ForeignKey("patterns.id")
     )
     audience: Mapped[str] = mapped_column(String(20))   # buyer | supplier
-    format: Mapped[str] = mapped_column(String(20))     # linkedin | instagram | blog | ad | email
+    # linkedin | linkedin_article | instagram_post | instagram_reel | whatsapp | email | blog
+    format: Mapped[str] = mapped_column(String(20))
     tone: Mapped[str] = mapped_column(String(20))       # educational | contrast
-    title: Mapped[str | None] = mapped_column(Text)     # blog title / reel hook (null for most)
+    title: Mapped[str | None] = mapped_column(Text)     # blog/article title, email subject (null for most)
     body: Mapped[str] = mapped_column(Text)             # the actual content
     # Receipts: the raw Signal IDs (real, dated reviews) this content is based on.
     source_review_ids: Mapped[list[uuid.UUID] | None] = mapped_column(ARRAY(UUID(as_uuid=True)))

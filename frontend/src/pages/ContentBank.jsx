@@ -9,12 +9,14 @@ const AUDIENCES = [
 ];
 
 const FORMATS = [
-  { value: "",          label: "All" },
-  { value: "linkedin",  label: "LinkedIn" },
-  { value: "instagram", label: "Instagram" },
-  { value: "blog",      label: "Blog" },
-  { value: "ad",        label: "Ad" },
-  { value: "email",     label: "Email/WhatsApp" },
+  { value: "",                 label: "All" },
+  { value: "linkedin",         label: "LinkedIn Post" },
+  { value: "linkedin_article", label: "LinkedIn Article" },
+  { value: "instagram_post",   label: "Instagram Post" },
+  { value: "instagram_reel",   label: "Instagram Reel" },
+  { value: "whatsapp",         label: "WhatsApp" },
+  { value: "email",            label: "Email" },
+  { value: "blog",             label: "Blog" },
 ];
 
 const STATUSES = [
@@ -26,13 +28,16 @@ const STATUSES = [
 ];
 
 const FORMAT_COLOR = {
-  linkedin: "#1889F6", instagram: "#EC4899", blog: "#22C55E",
-  ad: "#F59E0B", email: "#06B6D4",
+  linkedin: "#1889F6", linkedin_article: "#1889F6",
+  instagram_post: "#EC4899", instagram_reel: "#EC4899",
+  blog: "#22C55E", whatsapp: "#F59E0B", email: "#06B6D4",
 };
 
 const STATUS_COLOR = {
   draft: "#94A3B8", approved: "#22C55E", posted: "#1889F6", rejected: "#EF4444",
 };
+
+const FORMAT_LABEL = Object.fromEntries(FORMATS.filter(f => f.value).map(f => [f.value, f.label]));
 
 function fmtDate(d) {
   if (!d) return "—";
@@ -146,7 +151,7 @@ function ContentCard({ item, onUpdated }) {
         onClick={() => setOpen(!open)}
         style={{ padding: "16px 20px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}
       >
-        <Pill color={color}>{item.format}</Pill>
+        <Pill color={color}>{FORMAT_LABEL[item.format] || item.format}</Pill>
         <Pill color="#94A3B8">{item.audience}</Pill>
         <Pill color={item.tone === "contrast" ? "#F59E0B" : "#1889F6"}>
           {item.tone === "contrast" ? "Direct" : "Educational"}
