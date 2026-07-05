@@ -1,3 +1,5 @@
+from datetime import date
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -24,6 +26,8 @@ async def list_content_pieces(
     tone: str | None = Query(None, description="educational | contrast"),
     status: str | None = Query(None, description="draft | approved | posted | rejected"),
     pattern_id: str | None = Query(None),
+    scheduled_date_from: date | None = Query(None, description="Calendar view: start of date range (inclusive)"),
+    scheduled_date_to: date | None = Query(None, description="Calendar view: end of date range (inclusive)"),
     limit: int = Query(50, le=200),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
@@ -47,6 +51,10 @@ async def list_content_pieces(
         stmt = stmt.where(ContentPiece.status == status)
     if pattern_id:
         stmt = stmt.where(ContentPiece.pattern_id == pattern_id)
+    if scheduled_date_from:
+        stmt = stmt.where(ContentPiece.scheduled_date >= scheduled_date_from)
+    if scheduled_date_to:
+        stmt = stmt.where(ContentPiece.scheduled_date <= scheduled_date_to)
 
     rows = (await db.execute(stmt)).all()
 
@@ -60,6 +68,9 @@ async def list_content_pieces(
             "tone": cp.tone,
             "title": cp.title,
             "body": cp.body,
+            "image_brief": cp.image_brief,
+            "comment_note": cp.comment_note,
+            "scheduled_date": cp.scheduled_date,
             "status": cp.status,
             "receipt_count": len(cp.source_review_ids) if cp.source_review_ids else 0,
             "created_at": cp.created_at,
@@ -107,6 +118,9 @@ async def get_content_piece(content_id: str, db: AsyncSession = Depends(get_db))
         "tone": cp.tone,
         "title": cp.title,
         "body": cp.body,
+        "image_brief": cp.image_brief,
+        "comment_note": cp.comment_note,
+        "scheduled_date": cp.scheduled_date,
         "status": cp.status,
         "model": cp.model,
         "created_at": cp.created_at,

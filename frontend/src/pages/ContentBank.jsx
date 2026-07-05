@@ -1,117 +1,27 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "../lib/api";
-import { FileEdit, ExternalLink, Check, X, Copy, Pencil, ChevronDown } from "lucide-react";
+import { FileEdit, Check, X, Copy, Pencil, ChevronDown, CheckCheck } from "lucide-react";
+import {
+  AUDIENCES, FORMATS, STATUSES, FORMAT_COLOR, STATUS_COLOR, FORMAT_LABEL,
+  fmtDate, fmtDayShort, Pill, FilterRow, Receipt, btnStyle,
+} from "../components/contentBankShared";
+import PlatformPreview from "../components/PlatformPreview";
 
-const AUDIENCES = [
-  { value: "",         label: "All" },
-  { value: "buyer",    label: "Buyer" },
-  { value: "supplier", label: "Supplier" },
+// Order pieces read in within a day's calendar view — short formats first,
+// long-form last, matching how the generator writes them (short kit, long kit).
+const FORMAT_ORDER = ["linkedin", "instagram_post", "instagram_reel", "whatsapp", "linkedin_article", "email", "blog"];
+
+function isoDate(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+const VIEWS = [
+  { value: "calendar", label: "Calendar" },
+  { value: "list",     label: "List" },
 ];
-
-const FORMATS = [
-  { value: "",                 label: "All" },
-  { value: "linkedin",         label: "LinkedIn Post" },
-  { value: "linkedin_article", label: "LinkedIn Article" },
-  { value: "instagram_post",   label: "Instagram Post" },
-  { value: "instagram_reel",   label: "Instagram Reel" },
-  { value: "whatsapp",         label: "WhatsApp" },
-  { value: "email",            label: "Email" },
-  { value: "blog",             label: "Blog" },
-];
-
-const STATUSES = [
-  { value: "draft",    label: "Draft" },
-  { value: "approved", label: "Approved" },
-  { value: "posted",   label: "Posted" },
-  { value: "rejected", label: "Rejected" },
-  { value: "",         label: "All" },
-];
-
-const FORMAT_COLOR = {
-  linkedin: "#1889F6", linkedin_article: "#1889F6",
-  instagram_post: "#EC4899", instagram_reel: "#EC4899",
-  blog: "#22C55E", whatsapp: "#F59E0B", email: "#06B6D4",
-};
-
-const STATUS_COLOR = {
-  draft: "#94A3B8", approved: "#22C55E", posted: "#1889F6", rejected: "#EF4444",
-};
-
-const FORMAT_LABEL = Object.fromEntries(FORMATS.filter(f => f.value).map(f => [f.value, f.label]));
-
-function fmtDate(d) {
-  if (!d) return "—";
-  return new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
-}
-
-const formatUrl = (url) => {
-  if (!url) return "";
-  if (url.startsWith("playstore://")) {
-    const pkg = url.replace("playstore://", "").split("/")[0];
-    return `https://play.google.com/store/apps/details?id=${pkg}`;
-  }
-  return url;
-};
-
-function Pill({ children, color }) {
-  return (
-    <span style={{
-      fontSize: 11, fontWeight: 700,
-      padding: "3px 10px", borderRadius: 99,
-      background: `${color}14`, color, border: `1px solid ${color}28`,
-      whiteSpace: "nowrap", letterSpacing: ".3px",
-    }}>
-      {children}
-    </span>
-  );
-}
-
-function FilterRow({ options, value, onChange }) {
-  return (
-    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-      {options.map(({ value: v, label }) => {
-        const isActive = value === v;
-        return (
-          <button
-            key={v || "all"}
-            onClick={() => onChange(v)}
-            style={{
-              padding: "6px 15px", borderRadius: 99,
-              fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all .2s",
-              border: isActive ? "1px solid rgba(24,137,246,.35)" : "1px solid var(--border-card)",
-              background: isActive ? "var(--blue-tint)" : "transparent",
-              color: isActive ? "var(--blue)" : "var(--text-muted)",
-            }}
-          >
-            {label}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-function Receipt({ r }) {
-  return (
-    <div style={{ padding: "10px 14px", borderRadius: 8, background: "rgba(255,255,255,.02)", border: "1px solid var(--border-card)" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-        <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)" }}>
-          {r.source} {r.author ? `· ${r.author}` : ""}
-        </span>
-        <span style={{ fontSize: 11, color: "var(--text-dim)" }}>{fmtDate(r.collected_at)}</span>
-      </div>
-      <p style={{ fontSize: 12, color: "var(--text)", margin: "0 0 6px", lineHeight: 1.5 }}>
-        "{r.snippet}"
-      </p>
-      {r.source_url && (
-        <a href={formatUrl(r.source_url)} target="_blank" rel="noopener noreferrer"
-          style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, color: "var(--blue)", textDecoration: "none" }}>
-          View original <ExternalLink size={11} />
-        </a>
-      )}
-    </div>
-  );
-}
 
 function ContentCard({ item, onUpdated }) {
   const [open, setOpen] = useState(false);
@@ -195,8 +105,9 @@ function ContentCard({ item, onUpdated }) {
               <button onClick={() => setEditing(true)} style={btnStyle("#94A3B8")}><Pencil size={12} /> Edit</button>
             )}
             <button onClick={() => setStatus("approved")} style={btnStyle("#22C55E")}><Check size={12} /> Approve</button>
-            <button onClick={() => setStatus("rejected")} style={btnStyle("#EF4444")}><X size={12} /> Reject</button>
-            <button onClick={copyBody} style={btnStyle("#1889F6")}><Copy size={12} /> {copied ? "Copied!" : "Copy"}</button>
+            <button onClick={() => setStatus("rejected")} style={btnStyle("#EF4444")}><X size={12} /> Decline</button>
+            <button onClick={() => setStatus("posted")} style={btnStyle("#1889F6")}><CheckCheck size={12} /> Posted</button>
+            <button onClick={copyBody} style={btnStyle("#94A3B8")}><Copy size={12} /> {copied ? "Copied!" : "Copy"}</button>
           </div>
 
           <div style={{ marginTop: 18 }}>
@@ -217,16 +128,110 @@ function ContentCard({ item, onUpdated }) {
   );
 }
 
-function btnStyle(color) {
-  return {
-    display: "inline-flex", alignItems: "center", gap: 6,
-    padding: "7px 14px", borderRadius: 8, fontSize: 12, fontWeight: 700,
-    border: `1px solid ${color}30`, background: `${color}14`, color,
-    cursor: "pointer",
-  };
+function CalendarView() {
+  const days = useMemo(() => Array.from({ length: 7 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() + i);
+    return d;
+  }), []);
+
+  const [items, setItems] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState(isoDate(days[0]));
+
+  useEffect(() => {
+    setLoading(true);
+    api.contentPieces({ scheduled_date_from: isoDate(days[0]), scheduled_date_to: isoDate(days[6]) }, 200, 0)
+      .then(setItems)
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [days]);
+
+  function handleUpdated(id, patch) {
+    setItems(prev => prev.map(it => it.id === id ? { ...it, ...patch } : it));
+  }
+
+  const byDay = useMemo(() => {
+    const map = {};
+    for (const it of items || []) {
+      const key = it.scheduled_date;
+      if (!map[key]) map[key] = [];
+      map[key].push(it);
+    }
+    return map;
+  }, [items]);
+
+  const selectedItems = (byDay[selected] || []).slice().sort(
+    (a, b) => FORMAT_ORDER.indexOf(a.format) - FORMAT_ORDER.indexOf(b.format)
+  );
+
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 24 }}>
+        {days.map(d => {
+          const key = isoDate(d);
+          const dayItems = byDay[key] || [];
+          const hasContent = dayItems.length > 0;
+          const audience = dayItems[0]?.audience;
+          const patternName = dayItems[0]?.pattern_name;
+          const isActive = selected === key;
+
+          return (
+            <button
+              key={key}
+              onClick={() => setSelected(key)}
+              style={{
+                textAlign: "left", minWidth: 150, padding: "12px 14px", borderRadius: 12, cursor: "pointer",
+                border: isActive ? "1px solid rgba(24,137,246,.4)" : "1px solid var(--border-card)",
+                background: isActive ? "var(--blue-tint)" : "rgba(255,255,255,.015)",
+              }}
+            >
+              <p style={{ fontSize: 11, fontWeight: 700, color: isActive ? "var(--blue)" : "var(--text-muted)", margin: "0 0 6px", textTransform: "uppercase", letterSpacing: ".4px" }}>
+                {fmtDayShort(d)}
+              </p>
+              {loading ? (
+                <div className="shimmer" style={{ height: 14, borderRadius: 6, width: "80%" }} />
+              ) : hasContent ? (
+                <>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: "var(--text)", margin: "0 0 6px",
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {patternName || "—"}
+                  </p>
+                  <Pill color={audience === "supplier" ? "#F59E0B" : "#1889F6"}>{audience}</Pill>
+                </>
+              ) : (
+                <p style={{ fontSize: 11, color: "var(--text-dim)", fontStyle: "italic", margin: 0 }}>No content yet</p>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {loading ? (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(360px, 1fr))", gap: 14 }}>
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="shimmer" style={{ height: 220, borderRadius: 14 }} />
+          ))}
+        </div>
+      ) : selectedItems.length === 0 ? (
+        <div className="glass-card" style={{ padding: "64px 20px", textAlign: "center" }}>
+          <FileEdit size={32} style={{ color: "var(--text-dim)", margin: "0 auto 12px", display: "block" }} />
+          <p style={{ color: "var(--text-dim)", fontSize: 13, fontStyle: "italic", margin: 0 }}>
+            No content scheduled for this day yet. The Content Generator tops up the calendar daily at 5:45 AM IST.
+          </p>
+        </div>
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(360px, 1fr))", gap: 14 }}>
+          {selectedItems.map(item => (
+            <PlatformPreview key={item.id} item={item} onUpdated={handleUpdated} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
-export default function ContentBank() {
+function ListView() {
   const [audience, setAudience] = useState("");
   const [format, setFormat]     = useState("");
   const [status, setStatus]     = useState("draft");
@@ -246,21 +251,7 @@ export default function ContentBank() {
   }
 
   return (
-    <div className="animate-fade-in">
-      <div style={{ marginBottom: 28 }}>
-        <p className="section-label">Marketing</p>
-        <h2 style={{
-          fontFamily: "'Montserrat Alternates', sans-serif",
-          fontSize: 28, fontWeight: 800, color: "var(--text)", letterSpacing: "-1.2px",
-          margin: "0 0 6px",
-        }}>
-          Content Bank
-        </h2>
-        <p style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 500, margin: 0 }}>
-          Marketing content generated from real competitor pain signals — review, edit, approve
-        </p>
-      </div>
-
+    <div>
       <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 }}>
         <FilterRow options={STATUSES} value={status} onChange={setStatus} />
         <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
@@ -285,6 +276,34 @@ export default function ContentBank() {
           <ContentCard key={item.id} item={item} onUpdated={handleUpdated} />
         ))}
       </div>
+    </div>
+  );
+}
+
+export default function ContentBank() {
+  const [view, setView] = useState("calendar");
+
+  return (
+    <div className="animate-fade-in">
+      <div style={{ marginBottom: 28 }}>
+        <p className="section-label">Marketing</p>
+        <h2 style={{
+          fontFamily: "'Montserrat Alternates', sans-serif",
+          fontSize: 28, fontWeight: 800, color: "var(--text)", letterSpacing: "-1.2px",
+          margin: "0 0 6px",
+        }}>
+          Content Bank
+        </h2>
+        <p style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 500, margin: 0 }}>
+          One topic a day, repurposed across every platform — review, edit, approve
+        </p>
+      </div>
+
+      <div style={{ marginBottom: 24 }}>
+        <FilterRow options={VIEWS} value={view} onChange={setView} />
+      </div>
+
+      {view === "calendar" ? <CalendarView /> : <ListView />}
     </div>
   );
 }
