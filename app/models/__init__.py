@@ -8,6 +8,7 @@ from app.models.pattern import Pattern
 from app.models.signal_pattern import SignalPattern
 from app.models.instagram_session import InstagramSession
 from app.models.content_piece import ContentPiece
+from app.models.saved_item import SavedItem
 
 __all__ = [
     "Signal",
@@ -20,4 +21,5 @@ __all__ = [
     "SignalPattern",
     "InstagramSession",
     "ContentPiece",
+    "SavedItem",
 ]

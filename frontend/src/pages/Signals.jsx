@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
 import { Radio, ExternalLink } from "lucide-react";
+import SaveButton from "../components/SaveButton";
 
 const STREAMS = [
   { value: "",                   label: "All",             color: "#1889F6" },
@@ -70,7 +71,7 @@ const formatUrl = (url) => {
 function SkeletonRow() {
   return (
     <tr>
-      {[90, 100, 280, 90, 110, 50].map((w, i) => (
+      {[90, 100, 280, 90, 110, 50, 20].map((w, i) => (
         <td key={i} style={{ padding: "14px 20px" }}>
           <div className="shimmer" style={{ height: 18, width: w, borderRadius: 99 }} />
         </td>
@@ -161,7 +162,7 @@ export default function Signals() {
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
           <thead>
             <tr style={{ borderBottom: "1px solid var(--border-card)" }}>
-              {["Stream", "Source", "Snippet", "Author", "Collected", "Processed"].map(h => (
+              {["Stream", "Source", "Snippet", "Author", "Collected", "Processed", ""].map(h => (
                 <th key={h} style={{
                   padding: "12px 20px", textAlign: "left",
                   fontSize: 10, fontWeight: 700,
@@ -179,7 +180,7 @@ export default function Signals() {
               Array.from({ length: 8 }).map((_, i) => <SkeletonRow key={i} />)
             ) : items.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ padding: "64px 20px", textAlign: "center" }}>
+                <td colSpan={7} style={{ padding: "64px 20px", textAlign: "center" }}>
                   <Radio size={32} style={{ color: "var(--text-dim)", margin: "0 auto 12px", display: "block" }} />
                   <p style={{ color: "var(--text-dim)", fontSize: 13, fontStyle: "italic", margin: 0 }}>
                     No signals yet. Run a collector to start pulling data.
@@ -246,6 +247,14 @@ export default function Signals() {
                 </td>
                 <td style={{ padding: "13px 20px" }}>
                   <ProcessedDot yes={s.is_processed} />
+                </td>
+                <td style={{ padding: "13px 20px", textAlign: "right" }}>
+                  <SaveButton
+                    itemType="signal"
+                    itemId={s.id}
+                    title={s.author ? `${s.author} on ${s.source}` : `Signal from ${s.source}`}
+                    content={s}
+                  />
                 </td>
               </tr>
             ))}

@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { api } from "../lib/api";
 import { Pill, Receipt, btnStyle, FORMAT_COLOR, FORMAT_LABEL, STATUS_COLOR } from "./contentBankShared";
+import SaveButton from "./SaveButton";
 
 function ImageBrief({ text, square }) {
   if (!text) return null;
@@ -243,6 +244,12 @@ export default function PlatformPreview({ item, onUpdated }) {
           {item.tone === "contrast" ? "Direct" : "Educational"}
         </Pill>
         <span style={{ flex: 1 }} />
+        <SaveButton
+          itemType="content_piece"
+          itemId={item.id}
+          title={`${item.format} for ${item.audience}`}
+          content={item}
+        />
         <Pill color={STATUS_COLOR[item.status] || "#94A3B8"}>{item.status}</Pill>
       </div>
 

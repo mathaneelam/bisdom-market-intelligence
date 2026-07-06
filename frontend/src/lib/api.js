@@ -39,4 +39,19 @@ export const api = {
   },
   contentPiece:       (id)         => get(`/content-pieces/${id}`),
   updateContentPiece: (id, body)   => patch(`/content-pieces/${id}`, body),
+  savedItems:         (type = null)=> {
+    const q = new URLSearchParams();
+    if (type) q.set("item_type", type);
+    return get(`/saved-items?${q}`);
+  },
+  saveItem:           (body)       => {
+    return fetch(`${BASE}/saved-items`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then(res => res.json());
+  },
+  deleteSavedItem:    (id)         => {
+    return fetch(`${BASE}/saved-items/${id}`, { method: "DELETE" }).then(res => res.json());
+  },
 };

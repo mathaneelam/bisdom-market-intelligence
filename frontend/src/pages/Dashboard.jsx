@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
-import { AlertCircle, TrendingUp, Zap, BarChart2, ArrowUpRight, Clock, Layers, ChevronDown, ExternalLink } from "lucide-react";
+import { useSavedItems } from "../lib/SavedItemsContext";
+import { AlertCircle, TrendingUp, Zap, BarChart2, ArrowUpRight, Clock, Layers, ChevronDown, ExternalLink, Bookmark } from "lucide-react";
+import SaveButton from "../components/SaveButton";
 
 /* ── Helpers ─────────────────────────────────────────────── */
 function fmtDate(d) {
@@ -63,6 +65,13 @@ function BriefRow({ item, accentColor }) {
         }}>
           {item.relevance_score}/10
         </span>
+        <SaveButton
+          itemType="insight"
+          itemId={item.id || item.summary} // Some brief items might not have id yet, fallback to summary
+          title={item.summary}
+          content={item}
+          style={{ padding: 2 }}
+        />
         <ChevronDown size={12} style={{
           color: "var(--text-dim)", flexShrink: 0,
           transform: open ? "rotate(180deg)" : "rotate(0)", transition: "transform .2s",
@@ -160,6 +169,13 @@ function PatternCard({ pattern }) {
         }}>
           {trendIcon} {pattern.trend}
         </span>
+        <SaveButton
+          itemType="pattern"
+          itemId={pattern.id}
+          title={pattern.name}
+          content={pattern}
+          style={{ padding: 2 }}
+        />
         <ChevronDown size={14} style={{
           color: "var(--text-dim)", flexShrink: 0,
           transform: open ? "rotate(180deg)" : "rotate(0)", transition: "transform .2s",
@@ -269,6 +285,7 @@ export default function Dashboard() {
   const [brief, setBrief]       = useState(null);
   const [patterns, setPatterns] = useState([]);
   const [loading, setLoading]   = useState(true);
+  const { savedItems } = useSavedItems();
 
   useEffect(() => {
     Promise.all([api.signalStats(), api.todayBrief(), api.topPatterns(8)])
@@ -408,6 +425,73 @@ export default function Dashboard() {
           </div>
         </>
       )}
+
+      {/* Saved Items */}
+      <div className="divider" style={{ margin: "36px 0" }} />
+      <div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+          <div>
+            <p className="section-label">Bookmarks</p>
+            <h2 style={{
+              fontFamily: "'Montserrat Alternates', sans-serif",
+              fontSize: 20, fontWeight: 800, color: "var(--text)", letterSpacing: "-.6px", margin: 0,
+            }}>
+              Saved Items
+            </h2>
+          </div>
+          <div style={{
+            display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 99,
+            background: "var(--blue-tint)", border: "1px solid rgba(24,137,246,.18)",
+          }}>
+            <Bookmark size={11} style={{ color: "var(--blue)" }} />
+            <span style={{ fontSize: 11, fontWeight: 700, color: "var(--blue)", textTransform: "uppercase", letterSpacing: ".5px" }}>
+              {savedItems.length} saved
+            </span>
+          </div>
+        </div>
+
+        {savedItems.length === 0 ? (
+          <div className="glass-card" style={{ padding: "36px 32px", textAlign: "center" }}>
+            <Bookmark size={32} style={{ color: "var(--text-dim)", margin: "0 auto 12px", display: "block" }} />
+            <p style={{ fontSize: 13, fontStyle: "italic", color: "var(--text-dim)", margin: 0 }}>
+              You haven't saved any items yet. Look for the bookmark icon across the platform to save signals, insights, or content.
+            </p>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {savedItems.map(item => (
+              <div key={item.id} className="glass-card" style={{ padding: "14px 22px", display: "flex", alignItems: "center", gap: 16 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                    <span style={{
+                      fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 99,
+                      background: "rgba(255,255,255,.05)", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: ".5px"
+                    }}>
+                      {item.item_type.replace("_", " ")}
+                    </span>
+                    <span style={{ fontSize: 10, color: "var(--text-dim)" }}>
+                      {fmtDate(item.created_at)}
+                    </span>
+                  </div>
+                  <p style={{
+                    fontSize: 13, fontWeight: 600, color: "var(--text)", margin: 0,
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"
+                  }}>
+                    {item.title || "Untitled Item"}
+                  </p>
+                </div>
+                <SaveButton
+                  itemType={item.item_type}
+                  itemId={item.item_id}
+                  title={item.title}
+                  content={item.content}
+                  style={{ padding: 2 }}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
     </div>
   );

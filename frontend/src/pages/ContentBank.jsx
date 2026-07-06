@@ -6,6 +6,7 @@ import {
   fmtDate, fmtDayShort, Pill, FilterRow, Receipt, btnStyle,
 } from "../components/contentBankShared";
 import PlatformPreview from "../components/PlatformPreview";
+import SaveButton from "../components/SaveButton";
 
 // Order pieces read in within a day's calendar view — short formats first,
 // long-form last, matching how the generator writes them (short kit, long kit).
@@ -72,6 +73,12 @@ function ContentCard({ item, onUpdated }) {
         </p>
         <Pill color={STATUS_COLOR[item.status] || "#94A3B8"}>{item.status}</Pill>
         <span style={{ fontSize: 11, color: "var(--text-dim)", whiteSpace: "nowrap" }}>{fmtDate(item.created_at)}</span>
+        <SaveButton
+          itemType="content_piece"
+          itemId={item.id}
+          title={`${item.format} for ${item.audience}`}
+          content={item}
+        />
         <ChevronDown size={14} style={{
           color: "var(--text-dim)", transform: open ? "rotate(180deg)" : "rotate(0)", transition: "transform .2s",
         }} />
