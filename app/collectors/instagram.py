@@ -11,16 +11,16 @@ logger = logging.getLogger(__name__)
 
 MAX_POST_AGE_DAYS = 7  # hashtag "top" results can surface old popular posts — keep it current
 
-# Instagram Hashtags to track opportunity signals
+# Instagram Hashtags to track opportunity signals (Targeting Buyers/Brands)
 OPPORTUNITY_HASHTAGS = [
-    "clothingbrand",
-    "fashionbrand",
-    "clothingbrandindia",
-    "fashionbrandindia",
-    "clothinglabelindia",
-    "d2cbrandindia",
-    "boutiqueindia",
-    "clothingstartup",
+    "clothingbrandstartup",
+    "newclothingbrand",
+    "apparelstartup",
+    "startingaclothingbrand",
+    "myclothingbrand",
+    "newdropcomingsoon",
+    "brandlaunchingsoon",
+    "streetwearstartup",
 ]
 
 class InstagramCollector(BaseCollector):

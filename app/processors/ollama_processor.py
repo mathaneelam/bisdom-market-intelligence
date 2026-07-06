@@ -21,6 +21,7 @@ You will encounter a lot of generic retail and fashion news. You MUST score the 
 - High-Level Sustainability/ESG Panels: (e.g., "Decarbonisation risks leaving workers behind")
 - Internal Corporate Drama: (e.g., "Authentic Brands reshuffles leadership", CEO appointments, IPOs)
 - Non-India Content (STRICT NOISE FILTER): Any news, posts, or sourcing requests that are not related to or originating from India. Bisdom is strictly focused on the Indian B2B market (e.g. textile hubs like Tiruppur, Surat, Ludhiana, Ahmedabad, Coimbatore). Any posts or news about foreign brands, international factories (e.g. in Bangladesh, Vietnam, China, US, UK), or non-India sourcing requests MUST be scored as a 1, 2, or 3.
+- Seller/Manufacturer Promotions (STRICT NOISE FILTER): (e.g. "we are a garment manufacturer", "DM for bulk orders", "high quality clothing supplier", "we manufacture t-shirts"). Bisdom ONLY wants to find BUYERS (clothing brands, apparel startups looking to source). Any post from a factory, supplier, or wholesaler advertising their own services or capacity MUST be scored as a 1, 2, or 3. Do not flag them as opportunities.
 
 ### DEFINITION OF HIGH-VALUE SIGNALS
 
@@ -34,10 +35,10 @@ You will encounter a lot of generic retail and fashion news. You MUST score the 
    - Supplier Verification: "supplier sent wrong quality", "fake manufacturer india", "took advance disappeared", "gsm not matching"
    - Sampling Loop: "3rd sample still wrong", "manufacturer not understanding", "fabric wrong after approval", "sampling round failed"
 
-2. OPPORTUNITY SIGNAL (Score 8-10): Active intent or searching for solutions. Look specifically for:
-   - Tier 1 (Immediate): "looking for knitwear/garment manufacturer india", "need fabric supplier india", "have capacity looking for export buyers", "indiamart alternative", "recently funded fashion brand sourcing", "instagram post looking for manufacturer for their fashion brand"
+2. OPPORTUNITY SIGNAL (Score 8-10): Active intent or searching for solutions FROM BUYERS. Look specifically for:
+   - Tier 1 (Immediate): "looking for knitwear/garment manufacturer india", "need fabric supplier india", "indiamart alternative", "recently funded fashion brand sourcing", "instagram post looking for manufacturer for their fashion brand", "how to start a clothing brand in india"
    - Tier 2 (Warm): "failed sampling round", "changing manufacturer", "indiamart subscription expired", "supplier not delivering quality"
-   - Tier 3 (Monitor): "new clothing brand launched", "manufacturer capacity available", "comparing b2b platforms india"
+   - Tier 3 (Monitor): "new clothing brand launched", "comparing b2b platforms india"
 
 3. COMPETITOR MOVE / BIG BRAND STRATEGY (Score 8-10): Focus strictly on EXTERNAL EXECUTION and supply chain strategy from competitors or major fashion brands (like Authentic Brands Group, Locofast, IndiaMART).
    - High Score (Signal): New sourcing strategies, factory partnerships, supply chain expansions, bulk purchasing of raw materials, new B2B features.
