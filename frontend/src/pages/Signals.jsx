@@ -68,6 +68,39 @@ const formatUrl = (url) => {
   return url;
 };
 
+function ExpandableSnippet({ text }) {
+  const [expanded, setExpanded] = useState(false);
+  
+  if (!text) return <span>—</span>;
+  
+  return (
+    <div 
+      onClick={(e) => {
+        // Only toggle if they click the text, not a link
+        if (e.target.tagName !== 'A') setExpanded(!expanded);
+      }}
+      style={{
+        cursor: "pointer",
+        maxWidth: 400,
+        fontSize: 12,
+        lineHeight: 1.5,
+        color: "var(--text-muted)",
+        ...(expanded ? {
+          whiteSpace: "pre-wrap",
+          wordBreak: "break-word"
+        } : {
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis"
+        })
+      }}
+      title={expanded ? "" : "Click to expand"}
+    >
+      {text}
+    </div>
+  );
+}
+
 function SkeletonRow() {
   return (
     <tr>
@@ -200,44 +233,28 @@ export default function Signals() {
                 <td style={{ padding: "13px 20px", color: "var(--text)", fontWeight: 600, whiteSpace: "nowrap", fontSize: 12 }}>
                   {s.source ?? "—"}
                 </td>
-                <td style={{ padding: "13px 20px", color: "var(--text-muted)", maxWidth: 320 }}>
-                  {s.source_url ? (
-                    <a 
-                      href={formatUrl(s.source_url)} 
-                      target="_blank" 
-                      rel="noopener noreferrer" 
-                      style={{ 
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 6,
-                        color: "var(--text-muted)", 
-                        textDecoration: "none",
-                        transition: "color .15s"
-                      }}
-                      onMouseEnter={e => e.currentTarget.style.color = "var(--blue)"}
-                      onMouseLeave={e => e.currentTarget.style.color = "var(--text-muted)"}
-                    >
-                      <span title={s.snippet} style={{
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                        fontSize: 12,
-                      }}>
-                        {s.snippet || "—"}
-                      </span>
-                      <ExternalLink size={12} style={{ opacity: 0.6, flexShrink: 0 }} />
-                    </a>
-                  ) : (
-                    <span title={s.snippet} style={{
-                      display: "block",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      fontSize: 12,
-                    }}>
-                      {s.snippet || "—"}
-                    </span>
-                  )}
+                <td style={{ padding: "13px 20px", color: "var(--text-muted)", maxWidth: 400 }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <ExpandableSnippet text={s.snippet} />
+                    {s.source_url && (
+                      <a 
+                        href={formatUrl(s.source_url)} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        style={{ 
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 6,
+                          color: "var(--blue)", 
+                          textDecoration: "none",
+                          fontSize: 11,
+                          fontWeight: 600,
+                        }}
+                      >
+                        View Source <ExternalLink size={12} style={{ opacity: 0.8 }} />
+                      </a>
+                    )}
+                  </div>
                 </td>
                 <td style={{ padding: "13px 20px", color: "var(--text-dim)", whiteSpace: "nowrap", fontSize: 12 }}>
                   {s.author ?? "—"}

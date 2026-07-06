@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
 import { MapPin, ExternalLink, Calendar } from "lucide-react";
+import SaveButton from "../components/SaveButton";
 
 const CATEGORY = {
   textile:   { gradient: ["#1889F6", "#0A4FC4"], label: "Textile"    },
@@ -196,18 +197,26 @@ export default function TradeShows() {
                         {until}
                       </span>
                     )}
-                    {t.website && (
-                      <a
-                        href={t.website}
-                        target="_blank"
-                        rel="noreferrer"
-                        style={{ color: "var(--text-dim)", transition: "color .2s" }}
-                        onMouseEnter={e => e.currentTarget.style.color = "var(--blue)"}
-                        onMouseLeave={e => e.currentTarget.style.color = "var(--text-dim)"}
-                      >
-                        <ExternalLink size={14} />
-                      </a>
-                    )}
+                    <div style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "flex-end" }}>
+                      <SaveButton
+                        itemType="trade_show"
+                        itemId={t.id}
+                        title={t.name}
+                        content={t}
+                      />
+                      {t.website && (
+                        <a
+                          href={t.website}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{ color: "var(--text-dim)", transition: "color .2s" }}
+                          onMouseEnter={e => e.currentTarget.style.color = "var(--blue)"}
+                          onMouseLeave={e => e.currentTarget.style.color = "var(--text-dim)"}
+                        >
+                          <ExternalLink size={14} />
+                        </a>
+                      )}
+                    </div>
                   </div>
                 </div>
               );

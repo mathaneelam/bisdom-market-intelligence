@@ -49,7 +49,14 @@ export const api = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    }).then(res => res.json());
+    }).then(async res => {
+      if (!res.ok) {
+        const text = await res.text();
+        console.error("API error", res.status, text);
+        throw new Error(`API error ${res.status}: ${text}`);
+      }
+      return res.json();
+    });
   },
   deleteSavedItem:    (id)         => {
     return fetch(`${BASE}/saved-items/${id}`, { method: "DELETE" }).then(res => res.json());

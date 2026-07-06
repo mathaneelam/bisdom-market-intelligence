@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
 import { ExternalLink, Users } from "lucide-react";
+import SaveButton from "../components/SaveButton";
 
 // Deterministic gradient per competitor name (electric-blue palette)
 const GRADIENTS = [
@@ -118,6 +119,13 @@ export default function Competitors() {
                     Active
                   </span>
                 </div>
+
+                <SaveButton
+                  itemType="competitor"
+                  itemId={c.id}
+                  title={c.name}
+                  content={c}
+                />
               </div>
 
               {/* Links */}

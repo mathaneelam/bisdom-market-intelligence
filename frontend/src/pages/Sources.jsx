@@ -11,6 +11,7 @@ import {
   Users,
   ExternalLink
 } from "lucide-react";
+import SaveButton from "../components/SaveButton";
 
 const STREAM_META = {
   pain_pulse:         { label: "Pain Pulse",      color: "#EF4444" },
@@ -69,6 +70,38 @@ const formatUrl = (url) => {
   }
   return url;
 };
+
+function ExpandableSnippet({ text }) {
+  const [expanded, setExpanded] = useState(false);
+  
+  if (!text) return <span>—</span>;
+  
+  return (
+    <div 
+      onClick={(e) => {
+        if (e.target.tagName !== 'A') setExpanded(!expanded);
+      }}
+      style={{
+        cursor: "pointer",
+        maxWidth: 400,
+        fontSize: 12,
+        lineHeight: 1.5,
+        color: "var(--text-muted)",
+        ...(expanded ? {
+          whiteSpace: "pre-wrap",
+          wordBreak: "break-word"
+        } : {
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis"
+        })
+      }}
+      title={expanded ? "" : "Click to expand"}
+    >
+      {text}
+    </div>
+  );
+}
 
 function SkeletonRow() {
   return (
@@ -266,7 +299,7 @@ export default function Sources() {
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
                 <tr style={{ borderBottom: "1px solid var(--border-card)" }}>
-                  {["Stream", "Snippet", "Author", "Collected", "Processed"].map(h => (
+                  {["Stream", "Snippet", "Author", "Collected", "Processed", ""].map(h => (
                     <th key={h} style={{
                       padding: "12px 20px", textAlign: "left",
                       fontSize: 10, fontWeight: 700,
@@ -284,7 +317,7 @@ export default function Sources() {
                   Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)
                 ) : items.length === 0 ? (
                   <tr>
-                    <td colSpan={5} style={{ padding: "64px 20px", textAlign: "center" }}>
+                    <td colSpan={6} style={{ padding: "64px 20px", textAlign: "center" }}>
                       <Radio size={32} style={{ color: "var(--text-dim)", margin: "0 auto 12px", display: "block" }} />
                       <p style={{ color: "var(--text-dim)", fontSize: 13, fontStyle: "italic", margin: 0 }}>
                         No signals collected from {activeSource} yet.
@@ -301,44 +334,28 @@ export default function Sources() {
                     <td style={{ padding: "13px 20px", whiteSpace: "nowrap" }}>
                       <StreamBadge stream={s.stream} />
                     </td>
-                    <td style={{ padding: "13px 20px", color: "var(--text-muted)", maxWidth: 380 }}>
-                      {s.source_url ? (
-                        <a 
-                          href={formatUrl(s.source_url)} 
-                          target="_blank" 
-                          rel="noopener noreferrer" 
-                          style={{ 
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: 6,
-                            color: "var(--text-muted)", 
-                            textDecoration: "none",
-                            transition: "color .15s"
-                          }}
-                          onMouseEnter={e => e.currentTarget.style.color = "var(--blue)"}
-                          onMouseLeave={e => e.currentTarget.style.color = "var(--text-muted)"}
-                        >
-                          <span title={s.snippet} style={{
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                            fontSize: 12,
-                          }}>
-                            {s.snippet || "—"}
-                          </span>
-                          <ExternalLink size={12} style={{ opacity: 0.6, flexShrink: 0 }} />
-                        </a>
-                      ) : (
-                        <span title={s.snippet} style={{
-                          display: "block",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                          fontSize: 12,
-                        }}>
-                          {s.snippet || "—"}
-                        </span>
-                      )}
+                    <td style={{ padding: "13px 20px", color: "var(--text-muted)", maxWidth: 400 }}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        <ExpandableSnippet text={s.snippet} />
+                        {s.source_url && (
+                          <a 
+                            href={formatUrl(s.source_url)} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            style={{ 
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 6,
+                              color: "var(--blue)", 
+                              textDecoration: "none",
+                              fontSize: 11,
+                              fontWeight: 600,
+                            }}
+                          >
+                            View Source <ExternalLink size={12} style={{ opacity: 0.8 }} />
+                          </a>
+                        )}
+                      </div>
                     </td>
                     <td style={{ padding: "13px 20px", color: "var(--text-dim)", whiteSpace: "nowrap", fontSize: 12 }}>
                       {s.author ?? "—"}
@@ -348,6 +365,14 @@ export default function Sources() {
                     </td>
                     <td style={{ padding: "13px 20px" }}>
                       <ProcessedDot yes={s.is_processed} />
+                    </td>
+                    <td style={{ padding: "13px 20px", textAlign: "right" }}>
+                      <SaveButton
+                        itemType="signal"
+                        itemId={s.id}
+                        title={s.author ? `${s.author} on ${s.source}` : `Signal from ${s.source}`}
+                        content={s}
+                      />
                     </td>
                   </tr>
                 ))}
