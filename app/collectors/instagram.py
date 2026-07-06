@@ -11,6 +11,13 @@ logger = logging.getLogger(__name__)
 
 MAX_POST_AGE_DAYS = 7  # hashtag "top" results can surface old popular posts — keep it current
 
+# Instagram Accounts to track (Competitors, B2B platforms, known incubators)
+TARGET_ACCOUNTS = [
+    # "myntra",
+    # "indiamart",
+    # Add target accounts here to monitor them directly
+]
+
 # Instagram Hashtags to track opportunity signals (Targeting Buyers/Brands)
 OPPORTUNITY_HASHTAGS = [
     "clothingbrandindia",
@@ -99,6 +106,49 @@ class InstagramCollector(BaseCollector):
             
         return signals
 
+    async def _fetch_account_posts(self, L: instaloader.Instaloader, target_account: str) -> list[dict]:
+        signals = []
+        try:
+            loop = asyncio.get_event_loop()
+            
+            def get_account_posts():
+                profile = instaloader.Profile.from_username(L.context, target_account)
+                posts = []
+                count = 0
+                # get_posts() returns an iterator of Post objects
+                for post in profile.get_posts():
+                    posts.append(post)
+                    count += 1
+                    if count >= 10:  # Only check the latest 10 posts
+                        break
+                return posts
+                
+            posts = await loop.run_in_executor(None, get_account_posts)
+            
+            cutoff = datetime.utcnow() - timedelta(days=MAX_POST_AGE_DAYS)
+            for post in posts:
+                content = post.caption if post.caption else ""
+                taken_at = post.date_utc
+                collected_at = taken_at if taken_at else datetime.utcnow()
+
+                if taken_at and collected_at < cutoff:
+                    continue  # skip old posts
+
+                signals.append({
+                    "stream": self.stream,
+                    "source": "Instagram",
+                    "source_url": f"https://www.instagram.com/p/{post.shortcode}/",
+                    "raw_content": content,
+                    "author": post.owner_username,
+                    "language": "en",
+                    "collected_at": collected_at
+                })
+                    
+        except Exception as e:
+            logger.error(f"Error fetching Instagram account @{target_account}: {e}")
+            
+        return signals
+
     async def collect(self) -> list[dict]:
         if not settings.INSTAGRAM_USERNAME:
             logger.warning("Instagram username not set. Skipping Instagram collection.")
@@ -149,6 +199,11 @@ class InstagramCollector(BaseCollector):
 
             for hashtag in OPPORTUNITY_HASHTAGS:
                 signals = await self._fetch_hashtag_posts(L, hashtag)
+                all_signals.extend(signals)
+                await asyncio.sleep(2) # Be gentle on rate limits
+
+            for account in TARGET_ACCOUNTS:
+                signals = await self._fetch_account_posts(L, account)
                 all_signals.extend(signals)
                 await asyncio.sleep(2) # Be gentle on rate limits
                 
