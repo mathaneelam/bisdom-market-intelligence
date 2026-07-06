@@ -1,7 +1,7 @@
 from typing import Any, List
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, desc
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
 from app.models.base import get_db
@@ -25,16 +25,17 @@ class SavedItemResponse(SavedItemCreate):
         from_attributes = True
 
 @router.post("", response_model=SavedItemResponse)
-def save_item(item_in: SavedItemCreate, db: Session = Depends(get_db)) -> Any:
+async def save_item(item_in: SavedItemCreate, db: AsyncSession = Depends(get_db)) -> Any:
     """Save an item from the dashboard or platform."""
     # Optional: check if already saved
     if item_in.item_id:
-        existing = db.execute(
+        existing_result = await db.execute(
             select(SavedItem).where(
                 SavedItem.item_type == item_in.item_type,
                 SavedItem.item_id == item_in.item_id
             )
-        ).scalar_one_or_none()
+        )
+        existing = existing_result.scalar_one_or_none()
         if existing:
             return existing
 
@@ -45,29 +46,30 @@ def save_item(item_in: SavedItemCreate, db: Session = Depends(get_db)) -> Any:
         content=item_in.content
     )
     db.add(item)
-    db.commit()
-    db.refresh(item)
+    await db.commit()
+    await db.refresh(item)
     return item
 
 @router.get("", response_model=List[SavedItemResponse])
-def get_saved_items(
-    skip: int = 0, limit: int = 50, item_type: str | None = None, db: Session = Depends(get_db)
+async def get_saved_items(
+    skip: int = 0, limit: int = 50, item_type: str | None = None, db: AsyncSession = Depends(get_db)
 ) -> Any:
     """Get all saved items, ordered by newest first."""
     stmt = select(SavedItem).order_by(desc(SavedItem.created_at)).offset(skip).limit(limit)
     if item_type:
         stmt = stmt.where(SavedItem.item_type == item_type)
     
-    items = db.execute(stmt).scalars().all()
+    result = await db.execute(stmt)
+    items = result.scalars().all()
     return items
 
 @router.delete("/{item_id}")
-def delete_saved_item(item_id: UUID, db: Session = Depends(get_db)) -> Any:
+async def delete_saved_item(item_id: UUID, db: AsyncSession = Depends(get_db)) -> Any:
     """Remove a saved item."""
-    item = db.get(SavedItem, item_id)
+    item = await db.get(SavedItem, item_id)
     if not item:
         raise HTTPException(status_code=404, detail="Saved item not found")
     
-    db.delete(item)
-    db.commit()
+    await db.delete(item)
+    await db.commit()
     return {"status": "ok"}
