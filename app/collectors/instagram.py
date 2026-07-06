@@ -13,14 +13,14 @@ MAX_POST_AGE_DAYS = 7  # hashtag "top" results can surface old popular posts —
 
 # Instagram Hashtags to track opportunity signals (Targeting Buyers/Brands)
 OPPORTUNITY_HASHTAGS = [
-    "clothingbrandstartup",
-    "newclothingbrand",
-    "apparelstartup",
-    "startingaclothingbrand",
-    "myclothingbrand",
-    "newdropcomingsoon",
-    "brandlaunchingsoon",
-    "streetwearstartup",
+    "clothingbrandindia",
+    "streetwearindia",
+    "fashionstartupindia",
+    "apparelbrandindia",
+    "d2cbrandindia",
+    "indiastreetwear",
+    "clothingstartupindia",
+    "fashionlabelindia",
 ]
 
 class InstagramCollector(BaseCollector):
