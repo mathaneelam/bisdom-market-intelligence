@@ -1,6 +1,6 @@
 from datetime import date
 import logging
-import os
+import random
 import urllib.parse
 import httpx
 
@@ -20,25 +20,34 @@ router = APIRouter(prefix="/content-pieces", tags=["content"])
 
 
 # Every generated image shares this brand thread so all 7 platform images read
-# as one Bisdom family. "no text, no letters" matters: image models garble any
-# words they try to draw — the copy lives in the caption, the image carries mood.
+# as one Bisdom family. flux (Pollinations' default model) doesn't obey negation
+# well and treats words like "infographic"/"poster"/"banner" as an instruction to
+# render fake typography — that's what produced the garbled-text images. So the
+# style phrases below stick to pure scene/illustration language (no layout words
+# that imply captions or labels), and the anti-text instruction leads the prompt
+# and repeats in different phrasing rather than trailing at the end where it gets
+# less attention weight.
 _BRAND_THREAD = (
-    "Bisdom B2B commerce brand aesthetic, subtle blue accent color, clean modern "
-    "professional, Indian textile and garment manufacturing business context, "
-    "no text, no words, no letters, no logos, high quality"
+    "photographic illustration with absolutely no text, no typography, no letters, "
+    "no numbers, no captions, no labels, no logos anywhere in the image — pure visual "
+    "scene only. Bisdom B2B commerce brand aesthetic, subtle blue accent color, clean "
+    "modern professional, Indian textile and garment manufacturing business context, "
+    "high quality, no writing of any kind"
 )
 
 # One "style card" per platform: the mood phrase appended to the image_brief, plus
 # the output dimensions that match how that platform actually shows an image.
 # Tweak the phrases freely — this is the single place platform look & feel lives.
+# Avoid words like "infographic", "poster", "banner", "cover", "thumbnail" — flux
+# reads those as a cue to draw fake text/labels.
 FORMAT_IMAGE_STYLE = {
-    "linkedin":         {"style": "clean corporate infographic style, professional muted palette, data-driven business visual, flat minimal illustration", "width": 1200, "height": 628},
-    "linkedin_article": {"style": "editorial thought-leadership cover illustration, sophisticated muted tones, professional banner", "width": 1200, "height": 628},
-    "instagram_post":   {"style": "vibrant bold scroll-stopping poster, high contrast saturated colors, trendy modern social media graphic, eye-catching", "width": 1024, "height": 1024},
-    "instagram_reel":   {"style": "dynamic energetic vertical reel cover, bold vibrant colors, sense of motion, trendy thumbnail", "width": 1024, "height": 1792},
-    "whatsapp":         {"style": "simple clear friendly graphic, warm approachable, uncluttered, mobile-first", "width": 1024, "height": 1024},
-    "email":            {"style": "clean professional newsletter header banner, warm inviting marketing hero", "width": 1200, "height": 628},
-    "blog":             {"style": "editorial magazine-quality hero banner illustration, wide cinematic, thoughtful storytelling visual", "width": 1200, "height": 675},
+    "linkedin":         {"style": "clean corporate illustration style, professional muted palette, data-driven business scene, flat minimal art", "width": 1200, "height": 628},
+    "linkedin_article": {"style": "editorial thought-leadership illustration, sophisticated muted tones, professional wide scene", "width": 1200, "height": 628},
+    "instagram_post":   {"style": "vibrant bold scroll-stopping illustration, high contrast saturated colors, trendy modern social media art, eye-catching scene", "width": 1024, "height": 1024},
+    "instagram_reel":   {"style": "dynamic energetic vertical scene, bold vibrant colors, sense of motion, trendy visual", "width": 1024, "height": 1792},
+    "whatsapp":         {"style": "simple clear friendly illustration, warm approachable, uncluttered, mobile-first scene", "width": 1024, "height": 1024},
+    "email":            {"style": "clean professional wide illustration, warm inviting marketing scene", "width": 1200, "height": 628},
+    "blog":             {"style": "editorial magazine-quality wide illustration, cinematic, thoughtful storytelling scene", "width": 1200, "height": 675},
 }
 # Fallback for any legacy/unknown format so generation never hard-fails.
 _DEFAULT_STYLE = {"style": "clean modern professional business illustration", "width": 1024, "height": 1024}
@@ -195,11 +204,16 @@ async def generate_image(content_id: str, db: AsyncSession = Depends(get_db)):
         raise HTTPException(400, "Content piece has no image brief")
 
     style = FORMAT_IMAGE_STYLE.get(cp.format, _DEFAULT_STYLE)
-    full_prompt = f"{cp.image_brief}. {style['style']}. {_BRAND_THREAD}"
+    # Anti-text instruction leads the prompt (models weight earlier tokens more
+    # heavily); the actual scene and mood follow.
+    full_prompt = f"{_BRAND_THREAD}. {cp.image_brief}. {style['style']}"
     encoded_prompt = urllib.parse.quote(full_prompt)
+    # Random seed each call so "Regenerate" in the UI actually produces a
+    # different image instead of Pollinations returning a cached result.
+    seed = random.randint(0, 2**31 - 1)
     url = (
         f"https://image.pollinations.ai/prompt/{encoded_prompt}"
-        f"?width={style['width']}&height={style['height']}&nologo=true"
+        f"?width={style['width']}&height={style['height']}&nologo=true&seed={seed}"
     )
 
     try:

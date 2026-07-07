@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   ThumbsUp, MessageCircle, Repeat2, Send, Heart, Bookmark, CornerDownRight,
-  Image as ImageIcon, Check, X, Copy, Pencil, ChevronDown, CheckCheck, Loader2,
+  Image as ImageIcon, Check, X, Copy, Pencil, ChevronDown, CheckCheck, Loader2, RefreshCw,
 } from "lucide-react";
 import { api } from "../lib/api";
 import { Pill, Receipt, btnStyle, FORMAT_COLOR, FORMAT_LABEL, STATUS_COLOR } from "./contentBankShared";
@@ -37,7 +37,9 @@ function ImageBrief({ text, imageUrl, itemId, onUpdated, square, tall }) {
 
   if (imageUrl) {
     const BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
-    const src = imageUrl.startsWith("http") ? imageUrl : `${BASE}${imageUrl}`;
+    // Bust the browser cache with a fresh param each regenerate, otherwise the
+    // <img> keeps showing the old bytes even though the DB row changed.
+    const src = (imageUrl.startsWith("http") ? imageUrl : `${BASE}${imageUrl}`) + `?v=${loading ? "loading" : Date.now()}`;
     return (
       <div className="animate-fade-in" style={{
         position: "relative", width: "100%", maxWidth: boxMaxWidth, aspectRatio: boxAspect,
@@ -47,8 +49,22 @@ function ImageBrief({ text, imageUrl, itemId, onUpdated, square, tall }) {
         <img
           src={src}
           alt="AI Generated visual"
-          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          style={{ width: "100%", height: "100%", objectFit: "cover", opacity: loading ? 0.4 : 1, transition: "opacity 0.2s" }}
         />
+        <button
+          onClick={generateImage}
+          disabled={loading}
+          title="Regenerate image"
+          style={{
+            position: "absolute", top: 8, right: 8, display: "flex", alignItems: "center", gap: 5,
+            background: "rgba(0,0,0,0.6)", color: "#fff", border: "none", borderRadius: 6,
+            padding: "5px 9px", fontSize: 10, fontWeight: 600, cursor: loading ? "default" : "pointer",
+            backdropFilter: "blur(4px)", opacity: loading ? 0.7 : 1,
+          }}
+        >
+          {loading ? <Loader2 size={11} className="animate-spin" /> : <RefreshCw size={11} />}
+          {loading ? "Generating..." : "Regenerate"}
+        </button>
         <span style={{
           position: "absolute", bottom: 8, right: 8, fontSize: 9,
           color: "rgba(255,255,255,0.7)", background: "rgba(0,0,0,0.6)",
@@ -57,6 +73,13 @@ function ImageBrief({ text, imageUrl, itemId, onUpdated, square, tall }) {
         }}>
           AI Generated
         </span>
+        {error && (
+          <p style={{
+            position: "absolute", bottom: 8, left: 8, right: 8, margin: 0,
+            fontSize: 10, color: "#fff", background: "rgba(239,68,68,0.85)",
+            padding: "4px 7px", borderRadius: 4,
+          }}>{error}</p>
+        )}
       </div>
     );
   }
