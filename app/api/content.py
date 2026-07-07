@@ -1,15 +1,14 @@
 from datetime import date
 import logging
 import os
-import base64
+import urllib.parse
 import httpx
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
 from app.models.base import get_db
 from app.models.content_piece import ContentPiece
 from app.models.pattern import Pattern
@@ -18,6 +17,31 @@ from app.models.signal import Signal
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/content-pieces", tags=["content"])
+
+
+# Every generated image shares this brand thread so all 7 platform images read
+# as one Bisdom family. "no text, no letters" matters: image models garble any
+# words they try to draw — the copy lives in the caption, the image carries mood.
+_BRAND_THREAD = (
+    "Bisdom B2B commerce brand aesthetic, subtle blue accent color, clean modern "
+    "professional, Indian textile and garment manufacturing business context, "
+    "no text, no words, no letters, no logos, high quality"
+)
+
+# One "style card" per platform: the mood phrase appended to the image_brief, plus
+# the output dimensions that match how that platform actually shows an image.
+# Tweak the phrases freely — this is the single place platform look & feel lives.
+FORMAT_IMAGE_STYLE = {
+    "linkedin":         {"style": "clean corporate infographic style, professional muted palette, data-driven business visual, flat minimal illustration", "width": 1200, "height": 628},
+    "linkedin_article": {"style": "editorial thought-leadership cover illustration, sophisticated muted tones, professional banner", "width": 1200, "height": 628},
+    "instagram_post":   {"style": "vibrant bold scroll-stopping poster, high contrast saturated colors, trendy modern social media graphic, eye-catching", "width": 1024, "height": 1024},
+    "instagram_reel":   {"style": "dynamic energetic vertical reel cover, bold vibrant colors, sense of motion, trendy thumbnail", "width": 1024, "height": 1792},
+    "whatsapp":         {"style": "simple clear friendly graphic, warm approachable, uncluttered, mobile-first", "width": 1024, "height": 1024},
+    "email":            {"style": "clean professional newsletter header banner, warm inviting marketing hero", "width": 1200, "height": 628},
+    "blog":             {"style": "editorial magazine-quality hero banner illustration, wide cinematic, thoughtful storytelling visual", "width": 1200, "height": 675},
+}
+# Fallback for any legacy/unknown format so generation never hard-fails.
+_DEFAULT_STYLE = {"style": "clean modern professional business illustration", "width": 1024, "height": 1024}
 
 
 class ContentPieceUpdate(BaseModel):
@@ -65,15 +89,9 @@ async def list_content_pieces(
 
     rows = (await db.execute(stmt)).all()
 
-    api_dir = os.path.dirname(os.path.abspath(__file__))
-    app_dir = os.path.dirname(api_dir)
-    static_dir = os.path.join(app_dir, "static")
-
     result = []
     for cp, pattern_name in rows:
-        image_filename = f"{cp.id}.png"
-        image_exists = os.path.exists(os.path.join(static_dir, image_filename))
-        image_url = f"/static/{image_filename}" if image_exists else None
+        image_url = f"/content-pieces/{cp.id}/image" if cp.image_bytes is not None else None
 
         result.append({
             "id": str(cp.id),
@@ -124,12 +142,7 @@ async def get_content_piece(content_id: str, db: AsyncSession = Depends(get_db))
             for sig in signals
         ]
 
-    api_dir = os.path.dirname(os.path.abspath(__file__))
-    app_dir = os.path.dirname(api_dir)
-    static_dir = os.path.join(app_dir, "static")
-    image_filename = f"{cp.id}.png"
-    image_exists = os.path.exists(os.path.join(static_dir, image_filename))
-    image_url = f"/static/{image_filename}" if image_exists else None
+    image_url = f"/content-pieces/{cp.id}/image" if cp.image_bytes is not None else None
 
     return {
         "id": str(cp.id),
@@ -161,6 +174,8 @@ async def update_content_piece(content_id: str, update: ContentPieceUpdate, db: 
 
     if update.status is not None:
         cp.status = update.status
+        if update.status == "posted":
+            cp.image_bytes = None
     if update.body is not None:
         cp.body = update.body
     if update.title is not None:
@@ -172,59 +187,48 @@ async def update_content_piece(content_id: str, update: ContentPieceUpdate, db: 
 
 @router.post("/{content_id}/generate-image")
 async def generate_image(content_id: str, db: AsyncSession = Depends(get_db)):
-    """Call Google's Imagen 3 API using the image brief to generate and save an image."""
+    """Call Pollinations.ai API using the image brief to generate and save an image."""
     cp = await db.get(ContentPiece, content_id)
     if not cp:
         raise HTTPException(404, "Content piece not found")
     if not cp.image_brief:
         raise HTTPException(400, "Content piece has no image brief")
-    if not settings.GEMINI_API_KEY:
-        raise HTTPException(400, "GEMINI_API_KEY is not configured in environment")
 
-    # Define paths
-    api_dir = os.path.dirname(os.path.abspath(__file__))
-    app_dir = os.path.dirname(api_dir)
-    static_dir = os.path.join(app_dir, "static")
-    image_filename = f"{cp.id}.png"
-    image_path = os.path.join(static_dir, image_filename)
-
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{settings.GEMINI_MODEL}:predict?key={settings.GEMINI_API_KEY}"
-    payload = {
-        "instances": [{"prompt": cp.image_brief}],
-        "parameters": {
-            "sampleCount": 1,
-            "aspectRatio": "1:1",
-            "outputMimeType": "image/png"
-        }
-    }
+    style = FORMAT_IMAGE_STYLE.get(cp.format, _DEFAULT_STYLE)
+    full_prompt = f"{cp.image_brief}. {style['style']}. {_BRAND_THREAD}"
+    encoded_prompt = urllib.parse.quote(full_prompt)
+    url = (
+        f"https://image.pollinations.ai/prompt/{encoded_prompt}"
+        f"?width={style['width']}&height={style['height']}&nologo=true"
+    )
 
     try:
         async with httpx.AsyncClient() as client:
-            response = await client.post(url, json=payload, timeout=60.0)
+            response = await client.get(url, timeout=60.0)
             if response.status_code != 200:
-                logger.error("Imagen API returned error %d: %s", response.status_code, response.text)
-                raise HTTPException(502, f"Google AI API error: {response.text}")
+                logger.error("Pollinations API returned error %d: %s", response.status_code, response.text)
+                raise HTTPException(502, f"Free image generation service error: {response.text}")
 
-            data = response.json()
-            predictions = data.get("predictions", [])
-            if not predictions or "bytesBase64Encoded" not in predictions[0]:
-                logger.error("Invalid Imagen API response structure: %s", data)
-                raise HTTPException(502, "Invalid image generation response from Google AI API")
+            image_bytes = response.content
 
-            base64_image = predictions[0]["bytesBase64Encoded"]
-            image_bytes = base64.b64decode(base64_image)
-
-            # Ensure directory exists and write file
-            os.makedirs(static_dir, exist_ok=True)
-            with open(image_path, "wb") as f:
-                f.write(image_bytes)
+            cp.image_bytes = image_bytes
+            await db.commit()
 
             logger.info("Successfully generated image for content piece %s", cp.id)
-            return {"status": "ok", "image_url": f"/static/{image_filename}"}
+            return {"status": "ok", "image_url": f"/content-pieces/{cp.id}/image"}
 
     except httpx.HTTPError as e:
-        logger.error("HTTP error calling Google AI API: %s", e)
-        raise HTTPException(502, f"HTTP error talking to Google AI API: {str(e)}")
+        logger.error("HTTP error calling Pollinations API: %s", e)
+        raise HTTPException(502, f"HTTP error talking to free image generation service: {str(e)}")
     except Exception as e:
         logger.error("Unexpected error in image generation: %s", e)
         raise HTTPException(500, f"Error processing image generation: {str(e)}")
+
+
+@router.get("/{content_id}/image")
+async def get_content_piece_image(content_id: str, db: AsyncSession = Depends(get_db)):
+    """Fetch the image bytes from the cloud database and return as image/png response."""
+    cp = await db.get(ContentPiece, content_id)
+    if not cp or not cp.image_bytes:
+        raise HTTPException(404, "Image not found")
+    return Response(content=cp.image_bytes, media_type="image/png")

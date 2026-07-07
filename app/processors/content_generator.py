@@ -58,6 +58,29 @@ EMOJI RULE: LinkedIn, Instagram, and WhatsApp pieces may use at most 2-4 emojis
 total, placed naturally (never one per line, never in Blog or Email — those stay
 professional with zero emojis).
 
+CRAFT TOOLBOX (use to sharpen the writing — pick what fits, don't force all):
+The examples below show the STYLE of each hook and title type. Write a FRESH line
+in that style, tuned to THIS specific pain — never copy an example word-for-word.
+Openings — every piece's first line must earn the second. Choose the hook that
+suits the pain, fill the blanks from THIS pattern's real details, and VARY the
+type across formats so the day's pieces don't all open the same way:
+- Question: turn the hidden cost into a question — "When did [routine task] become [exhausting thing]?"
+- Scenario: drop the reader mid-frustration in short beats — "[action]. [bad result, ideally a number]. [gut-punch]."
+- Contrarian: flip the assumed problem — "The problem with [status quo] isn't [obvious thing] — it's [the real thing]."
+- Bold claim: state an uncomfortable truth as fact — "Most [audience's deals/leads] are [provocative negative] before [expected step]."
+- Story: one real person, one absurd status quo — "A [role] in [hub] [does painful thing] every [period] — and [keeps doing it] anyway."
+- Surprising number: lead with a figure, but ONLY if the evidence actually contains it. Never invent one.
+
+Titles (LinkedIn Article + Blog only) — reach for a proven shape and lead with the
+buyer/supplier's own words, not Bisdom's. Keep under ~60 characters where you can:
+- "How to [get result] without [the usual pain]" (e.g. "...Without the IndiaMART Lottery")
+- "[Number] ways to [result]" (e.g. "5 Ways to Vet a Fabric Supplier Before You Pay")
+- "Why [common belief] is wrong (and what to do instead)"
+- "The honest [competitor] alternative for [audience]"
+
+LinkedIn fold: the first ~140 characters show before "see more" — put the hook there.
+Aim the whole post near 1,300 characters, its highest-engagement length.
+
 For EVERY format below, before writing its actual content, output exactly these
 two labeled lines (each a single line, no line breaks inside them), then continue
 directly with that format's own content:

@@ -7,11 +7,16 @@ import { api } from "../lib/api";
 import { Pill, Receipt, btnStyle, FORMAT_COLOR, FORMAT_LABEL, STATUS_COLOR } from "./contentBankShared";
 import SaveButton from "./SaveButton";
 
-function ImageBrief({ text, imageUrl, itemId, onUpdated, square }) {
+function ImageBrief({ text, imageUrl, itemId, onUpdated, square, tall }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   if (!text && !imageUrl) return null;
+
+  // Match the box shape to what the backend generated for this platform:
+  // reels are tall (9/16), Instagram posts square, everything else wide (16/9).
+  const boxAspect = tall ? "9 / 16" : square ? "1 / 1" : "16 / 9";
+  const boxMaxWidth = tall ? 260 : undefined;   // keep a reel preview phone-sized
 
   async function generateImage(e) {
     e.stopPropagation();
@@ -24,7 +29,7 @@ function ImageBrief({ text, imageUrl, itemId, onUpdated, square }) {
       }
     } catch (err) {
       console.error(err);
-      setError("Failed to generate image. Verify GEMINI_API_KEY.");
+      setError("Image generation failed. The free service may be busy — try again.");
     } finally {
       setLoading(false);
     }
@@ -35,9 +40,9 @@ function ImageBrief({ text, imageUrl, itemId, onUpdated, square }) {
     const src = imageUrl.startsWith("http") ? imageUrl : `${BASE}${imageUrl}`;
     return (
       <div className="animate-fade-in" style={{
-        position: "relative", width: "100%", aspectRatio: square ? "1 / 1" : "16 / 9",
+        position: "relative", width: "100%", maxWidth: boxMaxWidth, aspectRatio: boxAspect,
         overflow: "hidden", borderRadius: 10, border: "1px solid var(--border-card)",
-        background: "#000", margin: "10px 0 0"
+        background: "#000", margin: tall ? "10px auto 0" : "10px 0 0"
       }}>
         <img
           src={src}
@@ -50,7 +55,7 @@ function ImageBrief({ text, imageUrl, itemId, onUpdated, square }) {
           padding: "3px 6px", borderRadius: 4, backdropFilter: "blur(4px)",
           letterSpacing: "0.5px", pointerEvents: "none"
         }}>
-          Imagen 3 AI
+          AI Generated
         </span>
       </div>
     );
@@ -61,10 +66,10 @@ function ImageBrief({ text, imageUrl, itemId, onUpdated, square }) {
       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
       gap: 10, textAlign: "center", padding: "20px 16px",
       border: "1px dashed var(--border-card)", borderRadius: 10,
-      background: "rgba(255,255,255,.02)", width: "100%", boxSizing: "border-box",
-      aspectRatio: square ? "1 / 1" : undefined,
-      minHeight: square ? undefined : 110,
-      margin: "10px 0 0"
+      background: "rgba(255,255,255,.02)", width: "100%", maxWidth: boxMaxWidth, boxSizing: "border-box",
+      aspectRatio: (square || tall) ? boxAspect : undefined,
+      minHeight: (square || tall) ? undefined : 110,
+      margin: tall ? "10px auto 0" : "10px 0 0"
     }}>
       <ImageIcon size={16} style={{ color: "var(--text-dim)" }} />
       <p style={{ fontSize: 11, color: "var(--text-dim)", fontStyle: "italic", margin: 0, lineHeight: 1.5, maxWidth: 320 }}>
@@ -188,7 +193,7 @@ function InstagramReelMock({ item, onUpdated }) {
   const lines = item.body.split("\n").filter(Boolean);
   return (
     <div style={{ padding: 16, borderRadius: 12, border: "1px solid var(--border-card)", background: "rgba(255,255,255,.015)" }}>
-      <ImageBrief text={item.image_brief} imageUrl={item.image_url} itemId={item.id} onUpdated={onUpdated} />
+      <ImageBrief text={item.image_brief} imageUrl={item.image_url} itemId={item.id} onUpdated={onUpdated} tall />
       <div style={{
         marginTop: 12, padding: "16px 14px", borderRadius: 14, background: "#0B0B0F",
         maxWidth: 260, marginLeft: "auto", marginRight: "auto",
@@ -291,6 +296,19 @@ export default function PlatformPreview({ item, onUpdated }) {
   }, [receiptsOpen]);
 
   async function setStatus(status) {
+    let confirmMsg = "";
+    if (status === "posted") {
+      confirmMsg = "Are you sure you want to mark this as Posted? This will permanently delete the generated image from the cloud database to save space.";
+    } else if (status === "approved") {
+      confirmMsg = "Are you sure you want to approve this content piece?";
+    } else if (status === "rejected") {
+      confirmMsg = "Are you sure you want to decline this content piece?";
+    }
+
+    if (confirmMsg && !window.confirm(confirmMsg)) {
+      return;
+    }
+
     await api.updateContentPiece(item.id, { status });
     onUpdated(item.id, { status });
   }

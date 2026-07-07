@@ -39,6 +39,19 @@ function ContentCard({ item, onUpdated }) {
   }, [open]);
 
   async function setStatus(status) {
+    let confirmMsg = "";
+    if (status === "posted") {
+      confirmMsg = "Are you sure you want to mark this as Posted? This will permanently delete the generated image from the cloud database to save space.";
+    } else if (status === "approved") {
+      confirmMsg = "Are you sure you want to approve this content piece?";
+    } else if (status === "rejected") {
+      confirmMsg = "Are you sure you want to decline this content piece?";
+    }
+
+    if (confirmMsg && !window.confirm(confirmMsg)) {
+      return;
+    }
+
     await api.updateContentPiece(item.id, { status });
     onUpdated(item.id, { status });
   }

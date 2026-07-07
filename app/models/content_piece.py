@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, date
-from sqlalchemy import String, Text, ForeignKey, Date, text
+from sqlalchemy import String, Text, ForeignKey, Date, text, LargeBinary
 from sqlalchemy.dialects.postgresql import UUID, ARRAY
 from sqlalchemy.orm import Mapped, mapped_column
 from app.models.base import Base
@@ -37,4 +37,6 @@ class ContentPiece(Base):
     scheduled_date: Mapped[date | None] = mapped_column(Date)
     image_brief: Mapped[str | None] = mapped_column(Text)   # AI-written description of the accompanying visual
     comment_note: Mapped[str | None] = mapped_column(Text)  # author's first-comment text, posted after publishing
+    image_bytes: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True) # persistent cloud image bytes
     created_at: Mapped[datetime] = mapped_column(server_default=text("now()"))
+
