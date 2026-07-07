@@ -6,6 +6,8 @@ class Settings(BaseSettings):
     OLLAMA_API_KEY: str = ""
     OLLAMA_API_KEY_FALLBACK: str = ""
     OLLAMA_MODEL: str = "llama3"
+    GEMINI_API_KEY: str = ""
+    GEMINI_MODEL: str = "imagen-4.0-generate-001"
     DATABASE_URL: str = "postgresql+asyncpg://bisdom:bisdom_secret@localhost:5432/bisdom_intelligence"
     REDIS_URL: str = "redis://localhost:6379"
     RESEND_API_KEY: str = ""

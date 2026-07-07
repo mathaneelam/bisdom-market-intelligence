@@ -16,6 +16,16 @@ async function patch(path, body) {
   return res.json();
 }
 
+async function post(path, body = {}) {
+  const res = await fetch(`${BASE}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`API error ${res.status} on ${path}`);
+  return res.json();
+}
+
 export const api = {
   signalStats:   ()                         => get("/signals/stats"),
   signals:       (stream, limit = 50, offset = 0, source = null) => {
@@ -39,6 +49,7 @@ export const api = {
   },
   contentPiece:       (id)         => get(`/content-pieces/${id}`),
   updateContentPiece: (id, body)   => patch(`/content-pieces/${id}`, body),
+  generateContentPieceImage: (id)  => post(`/content-pieces/${id}/generate-image`),
   savedItems:         (type = null)=> {
     const q = new URLSearchParams();
     if (type) q.set("item_type", type);

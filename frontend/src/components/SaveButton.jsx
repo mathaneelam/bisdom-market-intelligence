@@ -8,7 +8,9 @@ export default function SaveButton({ itemType, itemId, title, content, style }) 
 
   return (
     <button
+      type="button"
       onClick={(e) => {
+        e.preventDefault();
         e.stopPropagation();
         toggleSave(itemType, itemId, title, content);
       }}

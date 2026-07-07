@@ -1,14 +1,21 @@
 from datetime import date
+import logging
+import os
+import base64
+import httpx
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.models.base import get_db
 from app.models.content_piece import ContentPiece
 from app.models.pattern import Pattern
 from app.models.signal import Signal
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/content-pieces", tags=["content"])
 
@@ -58,8 +65,17 @@ async def list_content_pieces(
 
     rows = (await db.execute(stmt)).all()
 
-    return [
-        {
+    api_dir = os.path.dirname(os.path.abspath(__file__))
+    app_dir = os.path.dirname(api_dir)
+    static_dir = os.path.join(app_dir, "static")
+
+    result = []
+    for cp, pattern_name in rows:
+        image_filename = f"{cp.id}.png"
+        image_exists = os.path.exists(os.path.join(static_dir, image_filename))
+        image_url = f"/static/{image_filename}" if image_exists else None
+
+        result.append({
             "id": str(cp.id),
             "pattern_id": str(cp.pattern_id) if cp.pattern_id else None,
             "pattern_name": pattern_name,
@@ -69,14 +85,14 @@ async def list_content_pieces(
             "title": cp.title,
             "body": cp.body,
             "image_brief": cp.image_brief,
+            "image_url": image_url,
             "comment_note": cp.comment_note,
             "scheduled_date": cp.scheduled_date,
             "status": cp.status,
             "receipt_count": len(cp.source_review_ids) if cp.source_review_ids else 0,
             "created_at": cp.created_at,
-        }
-        for cp, pattern_name in rows
-    ]
+        })
+    return result
 
 
 @router.get("/{content_id}")
@@ -108,6 +124,13 @@ async def get_content_piece(content_id: str, db: AsyncSession = Depends(get_db))
             for sig in signals
         ]
 
+    api_dir = os.path.dirname(os.path.abspath(__file__))
+    app_dir = os.path.dirname(api_dir)
+    static_dir = os.path.join(app_dir, "static")
+    image_filename = f"{cp.id}.png"
+    image_exists = os.path.exists(os.path.join(static_dir, image_filename))
+    image_url = f"/static/{image_filename}" if image_exists else None
+
     return {
         "id": str(cp.id),
         "pattern_id": str(cp.pattern_id) if cp.pattern_id else None,
@@ -119,6 +142,7 @@ async def get_content_piece(content_id: str, db: AsyncSession = Depends(get_db))
         "title": cp.title,
         "body": cp.body,
         "image_brief": cp.image_brief,
+        "image_url": image_url,
         "comment_note": cp.comment_note,
         "scheduled_date": cp.scheduled_date,
         "status": cp.status,
@@ -144,3 +168,63 @@ async def update_content_piece(content_id: str, update: ContentPieceUpdate, db: 
 
     await db.commit()
     return {"status": "ok", "id": str(cp.id)}
+
+
+@router.post("/{content_id}/generate-image")
+async def generate_image(content_id: str, db: AsyncSession = Depends(get_db)):
+    """Call Google's Imagen 3 API using the image brief to generate and save an image."""
+    cp = await db.get(ContentPiece, content_id)
+    if not cp:
+        raise HTTPException(404, "Content piece not found")
+    if not cp.image_brief:
+        raise HTTPException(400, "Content piece has no image brief")
+    if not settings.GEMINI_API_KEY:
+        raise HTTPException(400, "GEMINI_API_KEY is not configured in environment")
+
+    # Define paths
+    api_dir = os.path.dirname(os.path.abspath(__file__))
+    app_dir = os.path.dirname(api_dir)
+    static_dir = os.path.join(app_dir, "static")
+    image_filename = f"{cp.id}.png"
+    image_path = os.path.join(static_dir, image_filename)
+
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{settings.GEMINI_MODEL}:predict?key={settings.GEMINI_API_KEY}"
+    payload = {
+        "instances": [{"prompt": cp.image_brief}],
+        "parameters": {
+            "sampleCount": 1,
+            "aspectRatio": "1:1",
+            "outputMimeType": "image/png"
+        }
+    }
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(url, json=payload, timeout=60.0)
+            if response.status_code != 200:
+                logger.error("Imagen API returned error %d: %s", response.status_code, response.text)
+                raise HTTPException(502, f"Google AI API error: {response.text}")
+
+            data = response.json()
+            predictions = data.get("predictions", [])
+            if not predictions or "bytesBase64Encoded" not in predictions[0]:
+                logger.error("Invalid Imagen API response structure: %s", data)
+                raise HTTPException(502, "Invalid image generation response from Google AI API")
+
+            base64_image = predictions[0]["bytesBase64Encoded"]
+            image_bytes = base64.b64decode(base64_image)
+
+            # Ensure directory exists and write file
+            os.makedirs(static_dir, exist_ok=True)
+            with open(image_path, "wb") as f:
+                f.write(image_bytes)
+
+            logger.info("Successfully generated image for content piece %s", cp.id)
+            return {"status": "ok", "image_url": f"/static/{image_filename}"}
+
+    except httpx.HTTPError as e:
+        logger.error("HTTP error calling Google AI API: %s", e)
+        raise HTTPException(502, f"HTTP error talking to Google AI API: {str(e)}")
+    except Exception as e:
+        logger.error("Unexpected error in image generation: %s", e)
+        raise HTTPException(500, f"Error processing image generation: {str(e)}")

@@ -1,27 +1,98 @@
 import { useEffect, useState } from "react";
 import {
   ThumbsUp, MessageCircle, Repeat2, Send, Heart, Bookmark, CornerDownRight,
-  Image as ImageIcon, Check, X, Copy, Pencil, ChevronDown, CheckCheck,
+  Image as ImageIcon, Check, X, Copy, Pencil, ChevronDown, CheckCheck, Loader2,
 } from "lucide-react";
 import { api } from "../lib/api";
 import { Pill, Receipt, btnStyle, FORMAT_COLOR, FORMAT_LABEL, STATUS_COLOR } from "./contentBankShared";
 import SaveButton from "./SaveButton";
 
-function ImageBrief({ text, square }) {
-  if (!text) return null;
+function ImageBrief({ text, imageUrl, itemId, onUpdated, square }) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  if (!text && !imageUrl) return null;
+
+  async function generateImage(e) {
+    e.stopPropagation();
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await api.generateContentPieceImage(itemId);
+      if (onUpdated) {
+        onUpdated(itemId, { image_url: data.image_url });
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Failed to generate image. Verify GEMINI_API_KEY.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (imageUrl) {
+    const BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
+    const src = imageUrl.startsWith("http") ? imageUrl : `${BASE}${imageUrl}`;
+    return (
+      <div className="animate-fade-in" style={{
+        position: "relative", width: "100%", aspectRatio: square ? "1 / 1" : "16 / 9",
+        overflow: "hidden", borderRadius: 10, border: "1px solid var(--border-card)",
+        background: "#000", margin: "10px 0 0"
+      }}>
+        <img
+          src={src}
+          alt="AI Generated visual"
+          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+        />
+        <span style={{
+          position: "absolute", bottom: 8, right: 8, fontSize: 9,
+          color: "rgba(255,255,255,0.7)", background: "rgba(0,0,0,0.6)",
+          padding: "3px 6px", borderRadius: 4, backdropFilter: "blur(4px)",
+          letterSpacing: "0.5px", pointerEvents: "none"
+        }}>
+          Imagen 3 AI
+        </span>
+      </div>
+    );
+  }
+
   return (
     <div style={{
       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-      gap: 6, textAlign: "center", padding: "20px 16px",
+      gap: 10, textAlign: "center", padding: "20px 16px",
       border: "1px dashed var(--border-card)", borderRadius: 10,
-      background: "rgba(255,255,255,.02)",
+      background: "rgba(255,255,255,.02)", width: "100%", boxSizing: "border-box",
       aspectRatio: square ? "1 / 1" : undefined,
-      minHeight: square ? undefined : 80,
+      minHeight: square ? undefined : 110,
+      margin: "10px 0 0"
     }}>
       <ImageIcon size={16} style={{ color: "var(--text-dim)" }} />
       <p style={{ fontSize: 11, color: "var(--text-dim)", fontStyle: "italic", margin: 0, lineHeight: 1.5, maxWidth: 320 }}>
         {text}
       </p>
+      {error && (
+        <p style={{ fontSize: 10, color: "#EF4444", margin: 0 }}>{error}</p>
+      )}
+      <button
+        onClick={generateImage}
+        disabled={loading}
+        style={{
+          background: "linear-gradient(135deg, #1889F6, #0A5FC2)",
+          color: "#fff", border: "none", borderRadius: 6,
+          padding: "6px 12px", fontSize: 11, fontWeight: 600,
+          cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
+          opacity: loading ? 0.7 : 1, transition: "opacity 0.2s"
+        }}
+      >
+        {loading ? (
+          <>
+            <Loader2 size={12} className="animate-spin" />
+            Generating...
+          </>
+        ) : (
+          "Generate AI Image"
+        )}
+      </button>
     </div>
   );
 }
@@ -66,7 +137,7 @@ function CommentStrip({ text }) {
   );
 }
 
-function LinkedInMock({ item }) {
+function LinkedInMock({ item, onUpdated }) {
   const isArticle = item.format === "linkedin_article";
   return (
     <div style={{ padding: 16, borderRadius: 12, border: "1px solid var(--border-card)", background: "rgba(255,255,255,.015)" }}>
@@ -80,7 +151,7 @@ function LinkedInMock({ item }) {
       {isArticle && item.title && (
         <p style={{ fontSize: 15, fontWeight: 800, color: "var(--text)", margin: "0 0 10px" }}>{item.title}</p>
       )}
-      <ImageBrief text={item.image_brief} />
+      <ImageBrief text={item.image_brief} imageUrl={item.image_url} itemId={item.id} onUpdated={onUpdated} />
       <p style={{ fontSize: 13, lineHeight: 1.65, color: "var(--text)", whiteSpace: "pre-wrap", margin: "12px 0 0" }}>
         {item.body}
       </p>
@@ -93,14 +164,14 @@ function LinkedInMock({ item }) {
   );
 }
 
-function InstagramPostMock({ item }) {
+function InstagramPostMock({ item, onUpdated }) {
   return (
     <div style={{ padding: 16, borderRadius: 12, border: "1px solid var(--border-card)", background: "rgba(255,255,255,.015)" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
         <Avatar size={28} />
         <p style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", margin: 0 }}>bisdom.official</p>
       </div>
-      <ImageBrief text={item.image_brief} square />
+      <ImageBrief text={item.image_brief} imageUrl={item.image_url} itemId={item.id} onUpdated={onUpdated} square />
       <IconRow icons={[
         { Icon: Heart, label: "" }, { Icon: MessageCircle, label: "" },
         { Icon: Send, label: "" }, { Icon: Bookmark, label: "" },
@@ -113,11 +184,11 @@ function InstagramPostMock({ item }) {
   );
 }
 
-function InstagramReelMock({ item }) {
+function InstagramReelMock({ item, onUpdated }) {
   const lines = item.body.split("\n").filter(Boolean);
   return (
     <div style={{ padding: 16, borderRadius: 12, border: "1px solid var(--border-card)", background: "rgba(255,255,255,.015)" }}>
-      <ImageBrief text={item.image_brief} />
+      <ImageBrief text={item.image_brief} imageUrl={item.image_url} itemId={item.id} onUpdated={onUpdated} />
       <div style={{
         marginTop: 12, padding: "16px 14px", borderRadius: 14, background: "#0B0B0F",
         maxWidth: 260, marginLeft: "auto", marginRight: "auto",
@@ -141,11 +212,11 @@ function InstagramReelMock({ item }) {
   );
 }
 
-function WhatsAppMock({ item }) {
+function WhatsAppMock({ item, onUpdated }) {
   const lines = item.body.split("\n").filter(Boolean);
   return (
     <div style={{ padding: 16, borderRadius: 12, border: "1px solid var(--border-card)", background: "#0B141A" }}>
-      <ImageBrief text={item.image_brief} />
+      <ImageBrief text={item.image_brief} imageUrl={item.image_url} itemId={item.id} onUpdated={onUpdated} />
       <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 12, alignItems: "flex-end" }}>
         {lines.map((line, i) => (
           <div key={i} style={{
@@ -164,7 +235,7 @@ function WhatsAppMock({ item }) {
   );
 }
 
-function EmailMock({ item }) {
+function EmailMock({ item, onUpdated }) {
   return (
     <div style={{ padding: 16, borderRadius: 12, border: "1px solid var(--border-card)", background: "rgba(255,255,255,.015)" }}>
       <div style={{ paddingBottom: 10, borderBottom: "1px solid var(--border-card)", marginBottom: 12 }}>
@@ -172,7 +243,7 @@ function EmailMock({ item }) {
         <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", margin: 0 }}>{item.title || "(no subject)"}</p>
         <p style={{ fontSize: 11, color: "var(--text-dim)", margin: "6px 0 0" }}>From: Bisdom &lt;hello@bisdom.co&gt;</p>
       </div>
-      <ImageBrief text={item.image_brief} />
+      <ImageBrief text={item.image_brief} imageUrl={item.image_url} itemId={item.id} onUpdated={onUpdated} />
       <p style={{ fontSize: 13, lineHeight: 1.7, color: "var(--text)", whiteSpace: "pre-wrap", margin: "12px 0 0" }}>
         {item.body}
       </p>
@@ -181,10 +252,10 @@ function EmailMock({ item }) {
   );
 }
 
-function BlogMock({ item }) {
+function BlogMock({ item, onUpdated }) {
   return (
     <div style={{ padding: 16, borderRadius: 12, border: "1px solid var(--border-card)", background: "rgba(255,255,255,.015)" }}>
-      <ImageBrief text={item.image_brief} />
+      <ImageBrief text={item.image_brief} imageUrl={item.image_url} itemId={item.id} onUpdated={onUpdated} />
       <h3 style={{ fontSize: 17, fontWeight: 800, color: "var(--text)", margin: "12px 0 10px" }}>{item.title}</h3>
       <p style={{ fontSize: 13, lineHeight: 1.75, color: "var(--text)", whiteSpace: "pre-wrap", margin: 0 }}>
         {item.body}
@@ -265,7 +336,7 @@ export default function PlatformPreview({ item, onUpdated }) {
           }}
         />
       ) : (
-        <Mock item={{ ...item, body: draftBody }} />
+        <Mock item={{ ...item, body: draftBody }} onUpdated={onUpdated} />
       )}
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
