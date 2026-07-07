@@ -8,6 +8,8 @@ class Settings(BaseSettings):
     OLLAMA_MODEL: str = "llama3"
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "imagen-4.0-generate-001"
+    OMNIROUTE_BASE_URL: str = "http://localhost:20128/v1"
+    OMNIROUTE_API_KEY: str = ""
     DATABASE_URL: str = "postgresql+asyncpg://bisdom:bisdom_secret@localhost:5432/bisdom_intelligence"
     REDIS_URL: str = "redis://localhost:6379"
     RESEND_API_KEY: str = ""

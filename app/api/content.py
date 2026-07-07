@@ -13,6 +13,8 @@ from app.models.base import get_db
 from app.models.content_piece import ContentPiece
 from app.models.pattern import Pattern
 from app.models.signal import Signal
+from app.config import settings
+import base64
 
 logger = logging.getLogger(__name__)
 
@@ -207,23 +209,41 @@ async def generate_image(content_id: str, db: AsyncSession = Depends(get_db)):
     # Anti-text instruction leads the prompt (models weight earlier tokens more
     # heavily); the actual scene and mood follow.
     full_prompt = f"{_BRAND_THREAD}. {cp.image_brief}. {style['style']}"
-    encoded_prompt = urllib.parse.quote(full_prompt)
-    # Random seed each call so "Regenerate" in the UI actually produces a
-    # different image instead of Pollinations returning a cached result.
-    seed = random.randint(0, 2**31 - 1)
-    url = (
-        f"https://image.pollinations.ai/prompt/{encoded_prompt}"
-        f"?width={style['width']}&height={style['height']}&nologo=true&seed={seed}"
-    )
+    
+    url = f"{settings.OMNIROUTE_BASE_URL.rstrip('/')}/images/generations"
+    headers = {"Content-Type": "application/json"}
+    if settings.OMNIROUTE_API_KEY:
+        headers["Authorization"] = f"Bearer {settings.OMNIROUTE_API_KEY}"
+
+    payload = {
+        "model": "antigravity/gemini-3.1-flash-image",
+        "prompt": full_prompt,
+        "n": 1,
+        "size": "1024x1024",
+        "response_format": "b64_json"
+    }
 
     try:
         async with httpx.AsyncClient() as client:
-            response = await client.get(url, timeout=60.0)
+            response = await client.post(url, headers=headers, json=payload, timeout=60.0)
             if response.status_code != 200:
-                logger.error("Pollinations API returned error %d: %s", response.status_code, response.text)
-                raise HTTPException(502, f"Free image generation service error: {response.text}")
+                logger.error("OmniRoute API returned error %d: %s", response.status_code, response.text)
+                raise HTTPException(502, f"OmniRoute image generation service error: {response.text}")
 
-            image_bytes = response.content
+            data = response.json()
+            if "data" in data and len(data["data"]) > 0:
+                img_data = data["data"][0]
+                if "b64_json" in img_data:
+                    image_bytes = base64.b64decode(img_data["b64_json"])
+                elif "url" in img_data:
+                    url_response = await client.get(img_data["url"], timeout=30.0)
+                    if url_response.status_code != 200:
+                        raise HTTPException(502, "Failed to download image from returned URL")
+                    image_bytes = url_response.content
+                else:
+                    raise HTTPException(502, "Invalid image data format returned from OmniRoute")
+            else:
+                raise HTTPException(502, f"No image data returned from OmniRoute: {data}")
 
             cp.image_bytes = image_bytes
             await db.commit()
@@ -232,8 +252,8 @@ async def generate_image(content_id: str, db: AsyncSession = Depends(get_db)):
             return {"status": "ok", "image_url": f"/content-pieces/{cp.id}/image"}
 
     except httpx.HTTPError as e:
-        logger.error("HTTP error calling Pollinations API: %s", e)
-        raise HTTPException(502, f"HTTP error talking to free image generation service: {str(e)}")
+        logger.error("HTTP error calling OmniRoute API: %s", e)
+        raise HTTPException(502, f"HTTP error talking to OmniRoute image generation service: {str(e)}")
     except Exception as e:
         logger.error("Unexpected error in image generation: %s", e)
         raise HTTPException(500, f"Error processing image generation: {str(e)}")
