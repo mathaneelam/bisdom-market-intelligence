@@ -21,6 +21,7 @@ WhatsApp and Email — at zero subscription cost.
 | Scheduler        | APScheduler (inside FastAPI)            |
 | Job Queue        | Redis + ARQ (Upstash free tier)         |
 | AI Processing    | AI Processor (Ollama/LLM)               |
+| Image Generation | OmniRoute (self-hosted AI router) → `antigravity/gemini-3.1-flash-image` (Google Gemini, free via antigravity account) |
 | Email Delivery   | Resend.com (free tier)                  |
 | Telegram         | Telegram Bot API (free)                 |
 | WhatsApp         | WhatsApp Business Cloud API (free tier) |
@@ -205,7 +206,7 @@ CREATE TABLE content_pieces (
     tone               VARCHAR(20),   -- educational | contrast
     title              TEXT,
     body               TEXT,
-    image_brief        TEXT,          -- AI-written description of the accompanying visual (no image model wired up)
+    image_brief        TEXT,          -- AI-written description of the accompanying visual; rendered on demand via OmniRoute (see Tech Stack)
     comment_note       TEXT,          -- author's first-comment text
     scheduled_date     DATE,          -- the calendar day this piece belongs to
     source_review_ids  UUID[],        -- receipts: the real signals this content is grounded in
@@ -349,3 +350,4 @@ Return JSON only. No preamble. No markdown.
 *   **[x] Phase 4: Delivery Channels** — Completed. Configured daily Morning Brief generators delivering to Email (Resend), Telegram (Bot API), and WhatsApp.
 *   **[x] Phase 5: Dashboard Frontend** — Completed. dark-mode dashboard built with routing, real-time filters, "Sources" card grids, and clickable snippet links to original posts.
 *   **[x] Phase 6: Pattern Matching & Content Bank** — Completed 2026-07-05. `pattern_matcher.py` clusters processed signals into recurring pain/opportunity themes (`patterns` table). `content_generator.py` turns high-importance patterns into ready-to-review marketing content (`content_pieces` table): one pattern per calendar day, batched a rolling 7 days ahead, audience rotated ~70% buyer / 30% supplier, and repurposed across LinkedIn (post + article), Instagram (post + reel), WhatsApp, Email, and Blog. Each piece includes an AI-written image brief and a first-comment note. The "Content Bank" dashboard page renders a weekly calendar of platform-native mockups with Approve/Decline/Edit/Posted actions, alongside a flat filterable list view.
+*   **[~] Phase 7: Image Generation via OmniRoute** — In progress, started 2026-07-08. Went through 3 providers: Gemini direct API → Pollinations.ai (free, but Flux garbled text into images) → **OmniRoute** (current). OmniRoute is a self-hosted AI router (`omniroute` npm package) that proxies 160+ providers through one OpenAI-compatible API, using free access from existing tool subscriptions instead of paid per-token keys. Confirmed by directly querying the running local router: the model actually generating images is `antigravity/gemini-3.1-flash-image` — Google's Gemini 3.1 Flash Image, reached through the free "antigravity" account route. No Claude/Anthropic model does image generation (Anthropic doesn't offer one); Claude Code is used only to configure and maintain this integration, not to render images. **Gap:** `OMNIROUTE_BASE_URL` still points at `http://localhost:20128`, i.e. the router only runs on Mathan's PC (autostarted via `scripts/omniroute-startup.vbs`). A hosted deployment is staged in `omniroute-deploy/fly.toml` (Fly.io app `omniroute-bisdom`) but **not yet deployed** — until it is, image generation only works while that PC and the local OmniRoute process are on, even for the production (Railway) backend.

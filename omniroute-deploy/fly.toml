@@ -1,0 +1,26 @@
+# fly.toml configuration for OmniRoute
+
+app = "omniroute-bisdom"
+primary_region = "sin"
+
+[build]
+  image = "diegosouzapw/omniroute:latest"
+
+[env]
+  DATA_DIR = "/data"
+  PORT = "20128"
+  HOST = "0.0.0.0"
+  HOSTNAME = "0.0.0.0"
+  BIND = "0.0.0.0"
+
+[[mounts]]
+  source = "omniroute_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 20128
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
