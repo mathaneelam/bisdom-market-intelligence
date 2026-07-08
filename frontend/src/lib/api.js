@@ -49,7 +49,7 @@ export const api = {
   },
   contentPiece:       (id)         => get(`/content-pieces/${id}`),
   updateContentPiece: (id, body)   => patch(`/content-pieces/${id}`, body),
-  generateContentPieceImage: (id)  => post(`/content-pieces/${id}/generate-image`),
+  generateContentPieceImage: (id, model)  => post(`/content-pieces/${id}/generate-image`, model ? { model } : {}),
   savedItems:         (type = null)=> {
     const q = new URLSearchParams();
     if (type) q.set("item_type", type);

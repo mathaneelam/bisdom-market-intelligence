@@ -1,9 +1,11 @@
 import re
+import uuid
 import logging
 import asyncio
-from datetime import date, timedelta
+from typing import NamedTuple
+from datetime import date, datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import select, func
 from openai import AsyncOpenAI
 
 from app.config import settings
@@ -54,6 +56,15 @@ audience's real voice — plain, confident, no corporate fluff, no AI-sounding f
 Simple Hinglish phrasing is fine where it feels natural. Never invent statistics or
 claims beyond what the evidence supports.
 
+EVIDENCE RULES (important):
+- The evidence is a set of already-summarized real pains. Use them ONLY for the
+  underlying business problem. PARAPHRASE — never quote a review verbatim, and never
+  echo vague, one-word or garbled feedback (e.g. "koi khas nahi hai", random letters).
+- Never make a piece about "bad reviews", "vague feedback", star ratings, or review
+  quality itself. Write about the real Bisdom pains: fake/duplicate leads, expensive
+  subscriptions with no ROI, WhatsApp deal chaos with no order history, and suppliers
+  who send the wrong quality or take an advance and disappear.
+
 EMOJI RULE: LinkedIn, Instagram, and WhatsApp pieces may use at most 2-4 emojis
 total, placed naturally (never one per line, never in Blog or Email — those stay
 professional with zero emojis).
@@ -84,7 +95,7 @@ Aim the whole post near 1,300 characters, its highest-engagement length.
 For EVERY format below, before writing its actual content, output exactly these
 two labeled lines (each a single line, no line breaks inside them), then continue
 directly with that format's own content:
-Image: (a 1-2 sentence description of the accompanying visual/graphic for this piece)
+Image: <describe ONE literal focal object/scene for THIS pain — a single concrete thing, e.g. "a sieve catching gold nuggets while pebbles fall through", NOT an abstract mood>. On-image text: "<a punchy phrase of AT MOST 4 words, or one short stat>" — or write exactly `On-image text: none` when the visual is stronger with no words. Keep the whole Image line on ONE line; never put a full sentence in the on-image text.
 Comment: (a short first-comment/follow-up note the author adds separately from the
 main copy — a CTA, an extra stat, or hashtags kept out of the main text)
 
@@ -156,6 +167,28 @@ def strip_thinking(text: str) -> str:
     return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL | re.IGNORECASE).strip()
 
 
+class EvidenceItem(NamedTuple):
+    """One cleaned, ranked receipt behind a pattern — safe to show the writer model."""
+    id: uuid.UUID
+    source: str | None
+    date: datetime | None
+    text: str            # the coherent summary (or coherent raw fallback), never gibberish
+    score: int | None    # scorer relevance 1-10, higher = stronger evidence
+
+
+def _is_coherent(text: str) -> bool:
+    """True if raw review text carries a real, readable message (not one-word/garbled junk).
+
+    Gibberish like "pàaaa ppl loooowiiib" (3 words) or one-liners like "koi khas nahi
+    hai" (<20 chars) fail this, so we never feed or quote them as evidence.
+    """
+    t = (text or "").strip()
+    if len(t) < 20 or len(t.split()) < 4:
+        return False
+    letters = sum(c.isalpha() for c in t)
+    return letters / len(t) >= 0.6
+
+
 class ContentGenerator:
     """
     Turns high-importance pain patterns into a ready-to-review content calendar.
@@ -169,31 +202,57 @@ class ContentGenerator:
             base_url=settings.OLLAMA_BASE_URL or "http://localhost:11434/v1",
         )
 
-    async def _fetch_evidence(self, session, pattern_id) -> list[Signal]:
-        """The real, dated reviews behind a pattern — used both as model input and as receipts."""
+    async def _fetch_evidence(self, session, pattern_id) -> list[EvidenceItem]:
+        """The real reviews behind a pattern, best-first and cleaned — model input + receipts.
+
+        Ranked by the scorer's relevance_score (NULLs last), not just recency, and fed
+        as the coherent ProcessedSignal.summary. Gibberish / one-word reviews with no
+        usable summary are dropped so the writer never sees or quotes garbled text.
+        """
         stmt = (
-            select(Signal)
+            select(
+                Signal.id, Signal.source, Signal.collected_at, Signal.raw_content,
+                ProcessedSignal.summary, ProcessedSignal.relevance_score,
+            )
             .join(ProcessedSignal, ProcessedSignal.signal_id == Signal.id)
             .join(SignalPattern, SignalPattern.signal_id == ProcessedSignal.id)
             .where(SignalPattern.pattern_id == pattern_id)
-            .order_by(Signal.collected_at.desc())
-            .limit(MAX_EVIDENCE_REVIEWS)
+            # coalesce so NULL scores sort last (Postgres puts NULLs first on DESC)
+            .order_by(func.coalesce(ProcessedSignal.relevance_score, 0).desc(), Signal.collected_at.desc())
         )
-        return (await session.execute(stmt)).scalars().all()
+        rows = (await session.execute(stmt)).all()
 
-    async def _write_kit(self, system_prompt: str, pattern: Pattern, audience_key: str, evidence: list[Signal]) -> str:
+        items: list[EvidenceItem] = []
+        for sid, source, collected_at, raw, summary, score in rows:
+            summary = (summary or "").strip()
+            raw = (raw or "").strip()
+            # Prefer the clean summary; fall back to raw only if it isn't gibberish.
+            if summary:
+                text = summary
+            elif _is_coherent(raw):
+                text = raw
+            else:
+                continue
+            items.append(EvidenceItem(id=sid, source=source, date=collected_at, text=text, score=score))
+            if len(items) >= MAX_EVIDENCE_REVIEWS:
+                break
+        return items
+
+    async def _write_kit(self, system_prompt: str, pattern: Pattern, audience_key: str, evidence: list[EvidenceItem]) -> str:
         evidence_block = "\n".join(
-            f"- [{sig.collected_at.date() if sig.collected_at else 'undated'}] "
-            f"{sig.source}: \"{(sig.raw_content or '').strip()}\""
-            for sig in evidence
-        ) or "(no individual reviews on file — rely on the pattern description)"
+            f"- [{ev.date.date() if ev.date else 'undated'}] {ev.source} "
+            f"(relevance {ev.score}/10): \"{ev.text}\""
+            for ev in evidence
+        ) or "(no usable individual reviews on file — rely on the pattern description)"
 
         user_prompt = (
             f"PAIN PATTERN: {pattern.name}\n"
             f"Description: {pattern.description}\n"
             f"Suggested Bisdom action: {pattern.bisdom_action}\n"
             f"Seen in {pattern.signal_count} signals, trend: {pattern.trend}\n\n"
-            f"REAL EVIDENCE (use these, don't invent new ones):\n{evidence_block}\n"
+            f"REAL EVIDENCE — the underlying pains behind this pattern, already summarized. "
+            f"Paraphrase them; do NOT quote any of them verbatim, and don't invent new ones:\n"
+            f"{evidence_block}\n"
         )
 
         response = await self.client.chat.completions.create(
@@ -337,7 +396,7 @@ class ContentGenerator:
             for day, pattern in zip(missing_days, patterns):
                 audience_key = AUDIENCE_ROTATION[(day - today).days % len(AUDIENCE_ROTATION)]
                 evidence = await self._fetch_evidence(session, pattern.id)
-                evidence_ids = [sig.id for sig in evidence] or None
+                evidence_ids = [ev.id for ev in evidence] or None
                 batch_new = 0
 
                 # Two separate completions: short-form pieces and long-form pieces

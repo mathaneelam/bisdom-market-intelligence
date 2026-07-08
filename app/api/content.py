@@ -1,7 +1,6 @@
 from datetime import date
 import logging
-import random
-import urllib.parse
+import re
 import httpx
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
@@ -21,44 +20,92 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/content-pieces", tags=["content"])
 
 
-# Every generated image shares this brand thread so all 7 platform images read
-# as one Bisdom family. flux (Pollinations' default model) doesn't obey negation
-# well and treats words like "infographic"/"poster"/"banner" as an instruction to
-# render fake typography — that's what produced the garbled-text images. So the
-# style phrases below stick to pure scene/illustration language (no layout words
-# that imply captions or labels), and the anti-text instruction leads the prompt
-# and repeats in different phrasing rather than trailing at the end where it gets
-# less attention weight.
-_BRAND_THREAD = (
-    "photographic illustration with absolutely no text, no typography, no letters, "
-    "no numbers, no captions, no labels, no logos anywhere in the image — pure visual "
-    "scene only. Bisdom B2B commerce brand aesthetic, subtle blue accent color, clean "
-    "modern professional, Indian textile and garment manufacturing business context, "
-    "high quality, no writing of any kind"
-)
+# ── Image generation: the "compiler" ─────────────────────────────────────────
+# We don't hand the model mood words ("premium", "trustworthy") — it can't paint
+# concepts, only pixels at positions, and guesses abstractions badly. Instead
+# `_build_image_prompt` compiles each content piece into ONE concrete prompt where
+# every idea is an exact hex colour, an explicit position, a short quoted string, or
+# an exclusion. Division of labour: THIS file owns the fixed scaffold (canvas, palette,
+# wordmark, style-lock, exclusions); the writer (gemma4) supplies only two variables
+# per piece inside `image_brief` — one literal focal object + an OPTIONAL on-image
+# phrase of <=4 words. Verified on gemini-3.1-flash-image: short quoted strings render
+# reliably, full sentences garble — so long text is capped out here and set in Canva.
+NAVY = "#0a1628"       # background
+BLUE = "#1889f6"       # the single accent
+OFFWHITE = "#ebebeb"   # text / highlights
 
-# One "style card" per platform: the mood phrase appended to the image_brief, plus
-# the output dimensions that match how that platform actually shows an image.
-# Tweak the phrases freely — this is the single place platform look & feel lives.
-# Avoid words like "infographic", "poster", "banner", "cover", "thumbnail" — flux
-# reads those as a cue to draw fake text/labels.
+# Per-format canvas only: orientation label + the three Gemini-safe sizes (1792x1024
+# wide, 1024x1024 square, 1024x1792 tall) that match the frontend preview box aspect
+# exactly with no cropping. Deliberately no mood words — the formula carries the look.
 FORMAT_IMAGE_STYLE = {
-    "linkedin":         {"style": "clean corporate illustration style, professional muted palette, data-driven business scene, flat minimal art", "width": 1200, "height": 628},
-    "linkedin_article": {"style": "editorial thought-leadership illustration, sophisticated muted tones, professional wide scene", "width": 1200, "height": 628},
-    "instagram_post":   {"style": "vibrant bold scroll-stopping illustration, high contrast saturated colors, trendy modern social media art, eye-catching scene", "width": 1024, "height": 1024},
-    "instagram_reel":   {"style": "dynamic energetic vertical scene, bold vibrant colors, sense of motion, trendy visual", "width": 1024, "height": 1792},
-    "whatsapp":         {"style": "simple clear friendly illustration, warm approachable, uncluttered, mobile-first scene", "width": 1024, "height": 1024},
-    "email":            {"style": "clean professional wide illustration, warm inviting marketing scene", "width": 1200, "height": 628},
-    "blog":             {"style": "editorial magazine-quality wide illustration, cinematic, thoughtful storytelling scene", "width": 1200, "height": 675},
+    "linkedin":         {"orientation": "Wide",              "width": 1792, "height": 1024},
+    "linkedin_article": {"orientation": "Wide",              "width": 1792, "height": 1024},
+    "instagram_post":   {"orientation": "Square",            "width": 1024, "height": 1024},
+    "instagram_reel":   {"orientation": "Vertical portrait", "width": 1024, "height": 1792},
+    "whatsapp":         {"orientation": "Square",            "width": 1024, "height": 1024},
+    "email":            {"orientation": "Wide",              "width": 1792, "height": 1024},
+    "blog":             {"orientation": "Wide",              "width": 1792, "height": 1024},
 }
 # Fallback for any legacy/unknown format so generation never hard-fails.
-_DEFAULT_STYLE = {"style": "clean modern professional business illustration", "width": 1024, "height": 1024}
+_DEFAULT_STYLE = {"orientation": "Square", "width": 1024, "height": 1024}
+
+
+def _parse_brief(brief: str | None) -> tuple[str, str | None]:
+    """Split the writer's Image line into (focal object, short on-image text).
+
+    The writer emits: `<one literal object> On-image text: "<=4 words"` (or
+    `On-image text: none`). We keep the quoted phrase ONLY when it's short — anything
+    over 4 words would garble on the model, so we drop it (it belongs on a Canva
+    headline layer, not baked into pixels). Legacy briefs with no marker fall back to
+    a pure object scene with no overlay text.
+    """
+    brief = (brief or "").strip()
+    marker = re.search(r"on-image text:\s*(.*)$", brief, re.IGNORECASE | re.DOTALL)
+    if not marker:
+        return brief, None
+    obj = brief[:marker.start()].strip().rstrip(".").strip()
+    phrase = marker.group(1).strip().strip('"').strip("'").strip()
+    if not phrase or phrase.lower() in ("none", "no text", "n/a") or len(phrase.split()) > 4:
+        phrase = None
+    return (obj or brief), phrase
+
+
+def _build_image_prompt(cp) -> tuple[str, dict]:
+    """Compile a content piece into one concrete, formula-shaped image prompt."""
+    style = FORMAT_IMAGE_STYLE.get(cp.format, _DEFAULT_STYLE)
+    obj, phrase = _parse_brief(cp.image_brief)
+
+    parts = [
+        f"{style['orientation']} poster, {style['width']}x{style['height']}px. "
+        f"Solid {NAVY} background, flat color, no gradient.",
+        f"Centered, a single flat vector motif: {obj}. Drawn in {BLUE} with "
+        f"{OFFWHITE} details, generous empty space around it.",
+    ]
+    if phrase:
+        parts.append(
+            f'In the upper third, centered, bold geometric sans-serif text in '
+            f'{OFFWHITE}, reads exactly: "{phrase}".'
+        )
+    parts.append(f'In the top-left corner, small text reads exactly: "bisdom" in {BLUE}.')
+    parts.append(
+        "Flat design, solid colors only, high contrast, generous empty space, "
+        "rounded corners on all shapes."
+    )
+    parts.append(
+        "No photorealistic elements, no additional icons, no illustrations beyond what "
+        "is described above, no extra text, no gradients, no drop shadows, no clutter."
+    )
+    return " ".join(parts), style
 
 
 class ContentPieceUpdate(BaseModel):
     status: str | None = None   # draft | approved | posted | rejected
     body: str | None = None
     title: str | None = None
+
+
+class GenerateImageRequest(BaseModel):
+    model: str | None = None
 
 
 @router.get("")
@@ -197,29 +244,27 @@ async def update_content_piece(content_id: str, update: ContentPieceUpdate, db: 
 
 
 @router.post("/{content_id}/generate-image")
-async def generate_image(content_id: str, db: AsyncSession = Depends(get_db)):
-    """Call Pollinations.ai API using the image brief to generate and save an image."""
+async def generate_image(content_id: str, request: GenerateImageRequest = None, db: AsyncSession = Depends(get_db)):
+    """Call OmniRoute (Gemini image model) with the image brief to generate and save an image."""
     cp = await db.get(ContentPiece, content_id)
     if not cp:
         raise HTTPException(404, "Content piece not found")
     if not cp.image_brief:
         raise HTTPException(400, "Content piece has no image brief")
 
-    style = FORMAT_IMAGE_STYLE.get(cp.format, _DEFAULT_STYLE)
-    # Anti-text instruction leads the prompt (models weight earlier tokens more
-    # heavily); the actual scene and mood follow.
-    full_prompt = f"{_BRAND_THREAD}. {cp.image_brief}. {style['style']}"
-    
+    # Compile the piece into one concrete, formula-shaped prompt (see _build_image_prompt).
+    full_prompt, style = _build_image_prompt(cp)
+
     url = f"{settings.OMNIROUTE_BASE_URL.rstrip('/')}/images/generations"
     headers = {"Content-Type": "application/json"}
     if settings.OMNIROUTE_API_KEY:
         headers["Authorization"] = f"Bearer {settings.OMNIROUTE_API_KEY}"
 
     payload = {
-        "model": "antigravity/gemini-3.1-flash-image",
+        "model": request.model if request and request.model else "antigravity/gemini-3.1-flash-image",
         "prompt": full_prompt,
         "n": 1,
-        "size": "1024x1024",
+        "size": f"{style['width']}x{style['height']}",
         "response_format": "b64_json"
     }
 

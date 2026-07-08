@@ -10,6 +10,17 @@ import SaveButton from "./SaveButton";
 function ImageBrief({ text, imageUrl, itemId, onUpdated, square, tall }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [selectedModel, setSelectedModel] = useState("antigravity/gemini-3.1-flash-image");
+
+  const MODELS = [
+    { value: "antigravity/gemini-3.1-flash-image", label: "Gemini 3.1 Flash" },
+    { value: "antigravity/gemini-3-pro-image-preview", label: "Gemini 3 Pro" },
+    { value: "codex/gpt-5.5", label: "GPT 5.5 (DALL-E)" },
+    { value: "codex/gpt-5.4", label: "GPT 5.4 (DALL-E)" },
+    { value: "huggingface/black-forest-labs/FLUX.1-dev", label: "FLUX.1 Dev" },
+    { value: "huggingface/black-forest-labs/FLUX.1-schnell", label: "FLUX.1 Schnell" },
+    { value: "huggingface/stabilityai/stable-diffusion-xl-base-1.0", label: "SDXL 1.0" },
+  ];
 
   if (!text && !imageUrl) return null;
 
@@ -23,7 +34,7 @@ function ImageBrief({ text, imageUrl, itemId, onUpdated, square, tall }) {
     setLoading(true);
     setError(null);
     try {
-      const data = await api.generateContentPieceImage(itemId);
+      const data = await api.generateContentPieceImage(itemId, selectedModel);
       if (onUpdated) {
         onUpdated(itemId, { image_url: data.image_url });
       }
@@ -51,20 +62,35 @@ function ImageBrief({ text, imageUrl, itemId, onUpdated, square, tall }) {
           alt="AI Generated visual"
           style={{ width: "100%", height: "100%", objectFit: "cover", opacity: loading ? 0.4 : 1, transition: "opacity 0.2s" }}
         />
-        <button
-          onClick={generateImage}
-          disabled={loading}
-          title="Regenerate image"
-          style={{
-            position: "absolute", top: 8, right: 8, display: "flex", alignItems: "center", gap: 5,
-            background: "rgba(0,0,0,0.6)", color: "#fff", border: "none", borderRadius: 6,
-            padding: "5px 9px", fontSize: 10, fontWeight: 600, cursor: loading ? "default" : "pointer",
-            backdropFilter: "blur(4px)", opacity: loading ? 0.7 : 1,
-          }}
-        >
-          {loading ? <Loader2 size={11} className="animate-spin" /> : <RefreshCw size={11} />}
-          {loading ? "Generating..." : "Regenerate"}
-        </button>
+        <div style={{ position: "absolute", top: 8, right: 8, display: "flex", gap: 6, alignItems: "center" }}>
+          <select
+            value={selectedModel}
+            onChange={e => setSelectedModel(e.target.value)}
+            disabled={loading}
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: "rgba(0,0,0,0.6)", color: "#fff", border: "1px solid rgba(255,255,255,0.2)",
+              borderRadius: 6, padding: "4px 8px", fontSize: 10, backdropFilter: "blur(4px)",
+              cursor: loading ? "default" : "pointer", outline: "none"
+            }}
+          >
+            {MODELS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+          </select>
+          <button
+            onClick={generateImage}
+            disabled={loading}
+            title="Regenerate image"
+            style={{
+              display: "flex", alignItems: "center", gap: 5,
+              background: "rgba(0,0,0,0.6)", color: "#fff", border: "none", borderRadius: 6,
+              padding: "5px 9px", fontSize: 10, fontWeight: 600, cursor: loading ? "default" : "pointer",
+              backdropFilter: "blur(4px)", opacity: loading ? 0.7 : 1,
+            }}
+          >
+            {loading ? <Loader2 size={11} className="animate-spin" /> : <RefreshCw size={11} />}
+            {loading ? "Generating..." : "Regenerate"}
+          </button>
+        </div>
         <span style={{
           position: "absolute", bottom: 8, right: 8, fontSize: 9,
           color: "rgba(255,255,255,0.7)", background: "rgba(0,0,0,0.6)",
@@ -101,26 +127,39 @@ function ImageBrief({ text, imageUrl, itemId, onUpdated, square, tall }) {
       {error && (
         <p style={{ fontSize: 10, color: "#EF4444", margin: 0 }}>{error}</p>
       )}
-      <button
-        onClick={generateImage}
-        disabled={loading}
-        style={{
-          background: "linear-gradient(135deg, #1889F6, #0A5FC2)",
-          color: "#fff", border: "none", borderRadius: 6,
-          padding: "6px 12px", fontSize: 11, fontWeight: 600,
-          cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
-          opacity: loading ? 0.7 : 1, transition: "opacity 0.2s"
-        }}
-      >
-        {loading ? (
-          <>
-            <Loader2 size={12} className="animate-spin" />
-            Generating...
-          </>
-        ) : (
-          "Generate AI Image"
-        )}
-      </button>
+      <div style={{ display: "flex", gap: 8, marginTop: 4, alignItems: "center" }}>
+        <select
+          value={selectedModel}
+          onChange={e => setSelectedModel(e.target.value)}
+          disabled={loading}
+          style={{
+            background: "rgba(255,255,255,0.05)", color: "var(--text)", border: "1px solid var(--border-card)",
+            borderRadius: 6, padding: "5px 8px", fontSize: 11, outline: "none", cursor: loading ? "default" : "pointer"
+          }}
+        >
+          {MODELS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+        </select>
+        <button
+          onClick={generateImage}
+          disabled={loading}
+          style={{
+            background: "linear-gradient(135deg, #1889F6, #0A5FC2)",
+            color: "#fff", border: "none", borderRadius: 6,
+            padding: "6px 12px", fontSize: 11, fontWeight: 600,
+            cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
+            opacity: loading ? 0.7 : 1, transition: "opacity 0.2s"
+          }}
+        >
+          {loading ? (
+            <>
+              <Loader2 size={12} className="animate-spin" />
+              Generating...
+            </>
+          ) : (
+            "Generate AI Image"
+          )}
+        </button>
+      </div>
     </div>
   );
 }
@@ -244,7 +283,7 @@ function WhatsAppMock({ item, onUpdated }) {
   const lines = item.body.split("\n").filter(Boolean);
   return (
     <div style={{ padding: 16, borderRadius: 12, border: "1px solid var(--border-card)", background: "#0B141A" }}>
-      <ImageBrief text={item.image_brief} imageUrl={item.image_url} itemId={item.id} onUpdated={onUpdated} />
+      <ImageBrief text={item.image_brief} imageUrl={item.image_url} itemId={item.id} onUpdated={onUpdated} square />
       <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 12, alignItems: "flex-end" }}>
         {lines.map((line, i) => (
           <div key={i} style={{
